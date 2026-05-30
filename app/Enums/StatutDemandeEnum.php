@@ -9,6 +9,7 @@ enum StatutDemandeEnum: string
     case DOCUMENT_MANQUANT = 'document_manquant';
     case VALIDEE = 'validee';
     case REJETEE = 'rejetee';
+    case REMISE = 'remise';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum StatutDemandeEnum: string
             self::DOCUMENT_MANQUANT => 'Document manquant',
             self::VALIDEE => 'Validée',
             self::REJETEE => 'Rejetée',
+            self::REMISE => 'Remis au guichet',
         };
     }
 
@@ -29,6 +31,7 @@ enum StatutDemandeEnum: string
             self::DOCUMENT_MANQUANT => '#C2410C',
             self::VALIDEE => '#15803D',
             self::REJETEE => '#B91C1C',
+            self::REMISE => '#8B5CF6',
         };
     }
 }

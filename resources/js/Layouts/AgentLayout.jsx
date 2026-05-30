@@ -15,6 +15,23 @@ const NAV = [
     { name: 'Paramètres',       href: '/agent/parametres',      icon: Settings },
 ];
 
+function formatRelativeTime(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return "À l'instant";
+    if (diffMin < 60) return `Il y a ${diffMin} min`;
+    if (diffHr < 24) return `Il y a ${diffHr} h`;
+    if (diffDays === 1) return 'Hier';
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function AgentLayout({ children, title }) {
     const { auth, notifications: initialNotifs = [] } = usePage().props;
     const currentUrl = usePage().url;
@@ -22,6 +39,12 @@ export default function AgentLayout({ children, title }) {
     const [showNotifs, setShowNotifs]   = useState(false);
     const [notifs, setNotifs]           = useState(initialNotifs);
     const [unreadMessages, setUnreadMessages] = useState(0);
+
+    const [time, setTime] = useState(new Date());
+    useEffect(() => {
+        const timer = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const unread   = notifs.filter(n => !n.lu).length;
     const isActive = (href) => currentUrl === href || currentUrl.startsWith(href);
@@ -145,6 +168,10 @@ export default function AgentLayout({ children, title }) {
                             <Menu size={18} />
                         </button>
                         <h2 className="text-sm font-black uppercase tracking-widest text-slate-800">{title}</h2>
+                        <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest shadow-sm">
+                            <Clock size={11} className="text-indigo-500" />
+                            {time.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} • {time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -182,7 +209,7 @@ export default function AgentLayout({ children, title }) {
                                                         <p className={`text-sm ${!n.lu ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{n.message}</p>
                                                         <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
                                                             <Clock size={11} />
-                                                            {new Date(n.created_at).toLocaleString('fr-FR')}
+                                                            {formatRelativeTime(n.created_at)}
                                                         </p>
                                                     </div>
                                                     {!n.lu && (

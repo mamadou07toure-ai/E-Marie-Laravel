@@ -85,10 +85,10 @@ class AgentController extends Controller
             'total' => Demande::count(),
             'en_attente' => Demande::where('statut', 'en_attente')->count(),
             'mes_dossiers' => Demande::where('agent_id', $request->user()->id)
-                ->whereNotIn('statut', ['validee', 'rejetee'])
+                ->whereNotIn('statut', ['validee', 'rejetee', 'remise'])
                 ->count(),
             'urgents' => Demande::where('priorite', 'urgente')
-                ->whereNotIn('statut', ['validee', 'rejetee'])
+                ->whereNotIn('statut', ['validee', 'rejetee', 'remise'])
                 ->count(),
         ]);
     }
@@ -230,6 +230,53 @@ class AgentController extends Controller
         ]);
 
         return response()->json(['message' => 'Statut mis à jour avec succès.', 'demande' => $demande->fresh()]);
+    }
+
+    public function closeDossier(Request $request, $uuid)
+    {
+        $demande = Demande::where('uuid', $uuid)->firstOrFail();
+
+        if ($demande->statut->value !== 'validee') {
+            return response()->json(['message' => 'Seul un dossier validé peut être remis.'], 422);
+        }
+
+        if (!$demande->is_physical_pickup) {
+            return response()->json(['message' => 'Ce dossier n\'est pas prévu pour un retrait physique.'], 422);
+        }
+
+        $demande->update([
+            'statut' => 'remise',
+            'date_cloture' => now()
+        ]);
+
+        HistoriqueStatut::create([
+            'demande_id'    => $demande->id,
+            'user_id'       => $request->user()->id,
+            'ancien_statut' => 'validee',
+            'nouveau_statut'=> 'remise',
+            'commentaire'   => 'Dossier remis physiquement au citoyen.',
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+            'user_id'    => $request->user()->id,
+            'action'     => 'Remise Dossier',
+            'entite'     => 'demandes',
+            'entite_id'  => $demande->id,
+            'details'    => json_encode(['numero_dossier' => $demande->numero_dossier]),
+            'ip_address' => $request->ip(),
+            'created_at' => now(),
+        ]);
+
+        \App\Models\Notification::create([
+            'user_id'    => $demande->user_id,
+            'demande_id' => $demande->id,
+            'type'       => 'dossier',
+            'message'    => "Votre document pour le dossier {$demande->numero_dossier} vous a été remis au guichet. Le dossier est maintenant clôturé.",
+            'lu'         => false,
+            'created_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'Dossier clôturé et remis au citoyen.']);
     }
 
     public function addNote(Request $request, $uuid)

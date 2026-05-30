@@ -90,6 +90,7 @@ export default function Index({ title = "Tous les dossiers", mine = false }) {
                             <option value="en_cours">En cours</option>
                             <option value="document_manquant">Pièce manquante</option>
                             <option value="validee">Validés</option>
+                            <option value="remise">Remis (Clos)</option>
                             <option value="rejetee">Rejetés</option>
                         </select>
                     </div>
@@ -156,6 +157,7 @@ export default function Index({ title = "Tous les dossiers", mine = false }) {
                                                 <td className="px-8 py-6">
                                                     <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 flex items-center gap-1.5 w-fit ${
                                                         task.statut === 'validee'           ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                        task.statut === 'remise'            ? 'bg-violet-50 text-violet-600 border-violet-100' :
                                                         task.statut === 'rejetee'           ? 'bg-rose-50 text-rose-600 border-rose-100' :
                                                         task.statut === 'document_manquant' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                                                         task.statut === 'en_cours'          ? 'bg-blue-50 text-blue-600 border-blue-100' :
@@ -163,6 +165,7 @@ export default function Index({ title = "Tous les dossiers", mine = false }) {
                                                     }`}>
                                                         <div className={`w-1.5 h-1.5 rounded-full ${
                                                             task.statut === 'validee'           ? 'bg-emerald-500' :
+                                                            task.statut === 'remise'            ? 'bg-violet-500' :
                                                             task.statut === 'rejetee'           ? 'bg-rose-500' :
                                                             task.statut === 'document_manquant' ? 'bg-amber-500' :
                                                             task.statut === 'en_cours'          ? 'bg-blue-500 animate-pulse' :

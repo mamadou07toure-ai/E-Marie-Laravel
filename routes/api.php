@@ -110,5 +110,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/demandes/{uuid}/assign', [AgentController::class, 'assign']);
         Route::patch('/demandes/{uuid}/statut', [AgentController::class, 'updateStatus']);
         Route::post('/demandes/{uuid}/notes', [AgentController::class, 'addNote']);
+        Route::post('/demandes/{uuid}/close', [AgentController::class, 'closeDossier']);
     });
 });

@@ -27,11 +27,13 @@ class DemandeController extends Controller
         $typeDemande = TypeDemande::where('code', $request->type_demande_id)->firstOrFail();
 
         $demande = Demande::create([
-            'user_id'         => $request->user()->id,
-            'type_demande_id' => $typeDemande->id,
-            'priorite'        => $request->priorite,
-            'description'     => $request->description,
-            'statut'          => StatutDemandeEnum::EN_ATTENTE,
+            'user_id'            => $request->user()->id,
+            'type_demande_id'    => $typeDemande->id,
+            'priorite'           => $request->priorite,
+            'description'        => $request->description,
+            'statut'             => StatutDemandeEnum::EN_ATTENTE,
+            'is_physical_pickup' => $request->boolean('is_physical_pickup'),
+            'donnees_formulaire' => $request->fields ?? [],
         ]);
 
         // Créer les données spécifiques selon le code du type
@@ -196,4 +198,73 @@ class DemandeController extends Controller
 
         return view('public.verify', compact('demande'));
     }
+
+    /**
+     * Generate and download the Bon de Retrait PDF.
+     */
+    public function downloadBonRetrait(Request $request, $uuid)
+    {
+        $demande = Demande::where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->with(['user', 'typeDemande', 'agent'])
+            ->firstOrFail();
+
+        // Must be validated or physically handed over
+        if (!in_array($demande->statut->value, ['validee', 'remise'])) {
+            return response()->json(['message' => 'Le bon de retrait n\'est disponible que pour les dossiers validés.'], 403);
+        }
+
+        // Only for physical pickup
+        if (!$demande->is_physical_pickup) {
+            return response()->json(['message' => 'Ce dossier est en retrait numérique, pas de bon de retrait physique.'], 403);
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.bon_retrait', compact('demande'));
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = "Bon_Retrait_{$demande->numero_dossier}.pdf";
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Generate and download the official digital document PDF.
+     */
+    public function downloadDocumentOfficiel(Request $request, $uuid)
+    {
+        $demande = Demande::where('uuid', $uuid)
+            ->where('user_id', $request->user()->id)
+            ->with(['user', 'typeDemande', 'agent'])
+            ->firstOrFail();
+
+        if (!in_array($demande->statut->value, ['validee', 'remise'])) {
+            return response()->json(['message' => 'Document disponible uniquement pour les dossiers validés.'], 403);
+        }
+
+        // Only for digital pickup
+        if ($demande->is_physical_pickup) {
+            return response()->json(['message' => 'Ce dossier est en retrait physique, utilisez le bon de retrait.'], 403);
+        }
+
+        // Map TypeDemande code → Blade template (codes from DB)
+        $templateMap = [
+            'ACTE_NAISSANCE'      => 'pdf.acte_naissance',
+            'CERTIFICAT_RESIDENCE'=> 'pdf.certificat_residence',
+            'ACTE_MARIAGE'        => 'pdf.certificat_mariage',
+            'CERTIFICAT_MARIAGE'  => 'pdf.certificat_mariage',
+            'LEGALISATION'        => 'pdf.legalisation_document',
+            'LEGALISATION_DOCUMENT'=> 'pdf.legalisation_document',
+            'CERTIFICAT_DECES'    => 'pdf.acte_naissance', // fallback gracieux
+        ];
+        $code     = $demande->typeDemande->code ?? '';
+        $template = $templateMap[$code] ?? 'pdf.acte_naissance';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView($template, compact('demande'));
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = "Document_Officiel_{$demande->numero_dossier}.pdf";
+
+        return $pdf->download($filename);
+    }
 }
+

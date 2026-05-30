@@ -16,7 +16,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-6 text-slate-100 relative overflow-hidden">
+<body class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 text-slate-100 relative overflow-x-hidden">
     <!-- Decorative Blurs -->
     <div class="absolute top-0 left-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
     <div class="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2"></div>

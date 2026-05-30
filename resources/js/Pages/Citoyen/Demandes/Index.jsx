@@ -57,6 +57,7 @@ export default function Index({ auth, demandes }) {
     const getStatutBadge = (statut) => {
         switch(statut) {
             case 'validee': return 'bg-green-100 text-green-700 border-green-200';
+            case 'remise': return 'bg-violet-100 text-violet-700 border-violet-200';
             case 'en_cours': return 'bg-blue-100 text-blue-700 border-blue-200';
             case 'rejetee': return 'bg-red-100 text-red-700 border-red-200';
             case 'document_manquant': return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -142,6 +143,7 @@ export default function Index({ auth, demandes }) {
                                 <option value="en_cours">En cours</option>
                                 <option value="document_manquant">Pièce manquante</option>
                                 <option value="validee">Validées</option>
+                                <option value="remise">Remises (Closes)</option>
                                 <option value="rejetee">Rejetées</option>
                             </select>
                             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
@@ -196,7 +198,7 @@ export default function Index({ auth, demandes }) {
                                     </td>
                                     <td className="px-8 py-6">
                                         <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 flex items-center gap-1.5 w-fit ${getStatutBadge(demande.statut)}`}>
-                                            <span className={`w-1 h-1 rounded-full ${demande.statut === 'validee' ? 'bg-green-500' : demande.statut === 'rejetee' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+                                            <span className={`w-1 h-1 rounded-full ${demande.statut === 'validee' ? 'bg-green-500' : demande.statut === 'remise' ? 'bg-violet-500' : demande.statut === 'rejetee' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
                                             {demande.statut.replace('_', ' ')}
                                         </span>
                                     </td>

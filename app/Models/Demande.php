@@ -19,6 +19,7 @@ class Demande extends Model
         'priorite',
         'description',
         'donnees_formulaire',
+        'is_physical_pickup',
         'motif_rejet',
         'piece_manquante',
         'notes_internes',

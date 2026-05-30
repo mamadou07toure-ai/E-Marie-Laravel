@@ -126,15 +126,11 @@ export default function Show({ auth, demande }) {
         }
     };
 
-    const handleDownload = (name) => {
-        toast.promise(
-            new Promise((resolve) => setTimeout(resolve, 1500)),
-            {
-                loading: `Génération sécurisée de ${name}...`,
-                success: `${name} a été généré et téléchargé avec succès.`,
-                error: 'Erreur lors de la génération du document.',
-            }
-        );
+    const handleDownload = (uuid, isPhysical) => {
+        const url = isPhysical
+            ? `/citoyen/demandes/${uuid}/bon-retrait`
+            : `/citoyen/demandes/${uuid}/document-officiel`;
+        window.open(url, '_blank');
     };
 
     const handlePrint = () => {
@@ -187,6 +183,24 @@ export default function Show({ auth, demande }) {
                     </div>
                 )}
 
+                {/* Bandeau Dossier Remis */}
+                {demande.statut === 'remise' && (
+                    <div className="mb-6 bg-violet-50 border-2 border-violet-200 rounded-[2rem] p-6 flex items-start gap-4 shadow-sm">
+                        <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center text-violet-600 shrink-0 shadow-inner">
+                            <CheckCircle2 size={24} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1">Dossier Clôturé — Document Remis</p>
+                            <p className="text-sm font-bold text-violet-900">
+                                Votre document officiel vous a été remis au guichet physique de la Mairie.
+                            </p>
+                            <p className="text-[10px] text-violet-600 font-bold mt-2 opacity-80">
+                                Ce dossier est désormais clôturé et archivé.
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Info */}
                     <div className="lg:col-span-2 space-y-6">
@@ -205,12 +219,15 @@ export default function Show({ auth, demande }) {
                                     >
                                         <Printer size={18} />
                                     </button>
-                                    <button 
-                                        onClick={() => handleDownload(`Récépissé_${demande.numero_dossier}.pdf`)}
-                                        className="p-2.5 bg-slate-50 text-slate-400 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-slate-100"
-                                    >
-                                        <Download size={18} />
-                                    </button>
+                                    {(demande.statut === 'validee' || demande.statut === 'remise') && (
+                                        <button 
+                                            onClick={() => handleDownload(demande.uuid, demande.is_physical_pickup)}
+                                            className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+                                        >
+                                            <Download size={16} /> 
+                                            {demande.is_physical_pickup ? 'Télécharger Bon de Retrait' : 'Télécharger Document Officiel'}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -299,36 +316,59 @@ export default function Show({ auth, demande }) {
                             )}
                         </div>
 
-                        {/* QR Code d'Authenticité (Visible une fois validé) */}
-                        {demande.statut === 'validee' && (
-                            <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 text-center space-y-4 relative overflow-hidden group">
+                        {/* QR Code d'Authenticité (Visible une fois validé ou remis) */}
+                        {(demande.statut === 'validee' || demande.statut === 'remise') && (
+                            <div className="relative bg-slate-950 text-white rounded-[2rem] border border-slate-800 shadow-xl p-8 text-center space-y-4 overflow-hidden group">
+                                {/* Ticket cuts (Hollow circle effect) */}
+                                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-slate-50 rounded-full border border-slate-800 z-20"></div>
+                                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-slate-50 rounded-full border border-slate-800 z-20"></div>
+
                                 <div className="absolute top-0 right-0 p-4 opacity-5">
-                                    <ShieldCheck size={48} className="text-emerald-500" />
+                                    <ShieldCheck size={48} className="text-emerald-400" />
                                 </div>
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Cachet d'Authenticité QR</h3>
-                                <div className="flex justify-center bg-slate-50 p-4 rounded-3xl border border-slate-100 shadow-inner max-w-[150px] mx-auto group-hover:scale-105 transition-transform">
+
+                                <div>
+                                    <span className="inline-block px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[8px] font-black uppercase tracking-widest mb-1 border border-emerald-500/20">
+                                        ✔ Acte Authentifié
+                                    </span>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">Ticket de Garantie</h3>
+                                </div>
+
+                                <div className="border-t border-dashed border-slate-800 my-4 relative">
+                                    <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 px-2 bg-slate-950 text-[7px] text-slate-500 font-bold uppercase tracking-[0.25em]">
+                                        SÉCURITÉ ÉTAT CIVIL
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-center bg-white p-3 rounded-2xl border border-slate-800 shadow-inner max-w-[140px] mx-auto group-hover:scale-105 transition-transform duration-300">
                                     <img 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/verify/demandes/' + demande.uuid)}`} 
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                                            `┌─────────────────────────────────┐\n│      RÉPUBLIQUE DE GUINÉE       │\n│     - SMART E-MAIRIE TICKET -   │\n├─────────────────────────────────┤\n│ DOSSIER  : ${demande.numero_dossier.padEnd(20)} │\n│ SERVICE  : ${(demande.type_demande?.libelle || 'Civil').padEnd(20)} │\n│ TITULAIRE: ${((auth?.user?.prenom || '') + ' ' + (auth?.user?.nom || '')).substring(0, 20).padEnd(20)} │\n│ STATUT   : VALIDE & AUTHENTIQUE │\n│ DATE     : ${new Date(demande.updated_at).toLocaleDateString('fr-FR').padEnd(20)} │\n│ SIGNATURE: ${(demande.agent ? (demande.agent.prenom + ' ' + demande.agent.nom) : 'Officier').substring(0, 20).padEnd(20)} │\n├─────────────────────────────────┤\n│      EMPREINTE DE SÉCURITÉ      │\n│  ${demande.uuid.substring(0,28)}  │\n└─────────────────────────────────┘`
+                                        )}`}
                                         alt="QR Code d'Authenticité"
-                                        className="w-28 h-28" 
+                                        className="w-32 h-32" 
                                     />
                                 </div>
-                                <p className="text-[10px] text-slate-500 max-w-[200px] mx-auto leading-relaxed">
-                                    Ce QR Code certifie que cet acte civil est authentique et conforme aux registres numériques de la mairie.
+
+                                <p className="text-[9px] text-slate-400 max-w-[200px] mx-auto leading-relaxed pt-2">
+                                    Scannez ce ticket de sécurité pour valider l'authenticité de votre acte hors-ligne.
                                 </p>
-                                <a 
-                                    href={`/verify/demandes/${demande.uuid}`} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center justify-center gap-1.5"
-                                >
-                                    <ExternalLink size={12} /> Vérifier publiquement l'acte
-                                </a>
+
+                                <div className="pt-2">
+                                    <a 
+                                        href={`/verify/demandes/${demande.uuid}`} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest hover:underline flex items-center justify-center gap-1.5"
+                                    >
+                                        <ExternalLink size={12} /> Consulter en ligne
+                                    </a>
+                                </div>
                             </div>
                         )}
 
                         {/* Prise de Rendez-vous / Calendrier Retrait Physique */}
-                        {demande.statut === 'validee' && (
+                        {demande.statut === 'validee' && demande.is_physical_pickup && (
                             <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 space-y-6 relative overflow-hidden">
                                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
                                     <Calendar size={14} className="text-indigo-600" />
@@ -432,6 +472,7 @@ export default function Show({ auth, demande }) {
                                         const dotColor =
                                             hist.nouveau_statut === 'validee'           ? 'bg-emerald-500' :
                                             hist.nouveau_statut === 'rejetee'           ? 'bg-rose-500' :
+                                            hist.nouveau_statut === 'remise'            ? 'bg-violet-500' :
                                             hist.nouveau_statut === 'document_manquant' ? 'bg-amber-500' :
                                             'bg-indigo-600';
                                         const labelMap = {
@@ -440,6 +481,7 @@ export default function Show({ auth, demande }) {
                                             document_manquant: 'Document manquant',
                                             validee:           'Validé',
                                             rejetee:           'Rejeté',
+                                            remise:            'Remis',
                                         };
                                         return (
                                             <div key={i} className="relative pl-10">

@@ -71,7 +71,7 @@ Route::post('/inscription', [AuthController::class, 'register'])->name('register
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Citoyen Routes
-Route::middleware(['auth:sanctum', 'role:citoyen,administrateur'])->prefix('citoyen')->group(function () {
+Route::middleware(['auth', 'role:citoyen,administrateur'])->prefix('citoyen')->group(function () {
     Route::get('/tableau-de-bord', [App\Http\Controllers\Api\V1\CitoyenController::class, 'dashboard'])->name('citoyen.dashboard');
 
     Route::get('/mes-dossiers', function (Request $request) {
@@ -109,10 +109,12 @@ Route::middleware(['auth:sanctum', 'role:citoyen,administrateur'])->prefix('cito
     })->name('citoyen.settings');
 
     Route::post('/demandes', [App\Http\Controllers\Api\V1\DemandeController::class, 'store'])->name('citoyen.demandes.store');
+    Route::get('/demandes/{uuid}/bon-retrait', [App\Http\Controllers\Api\V1\DemandeController::class, 'downloadBonRetrait'])->name('citoyen.demandes.bon-retrait');
+    Route::get('/demandes/{uuid}/document-officiel', [App\Http\Controllers\Api\V1\DemandeController::class, 'downloadDocumentOfficiel'])->name('citoyen.demandes.document-officiel');
 });
 
 // Agent Routes
-Route::middleware(['auth:sanctum', 'role:agent,administrateur'])->prefix('agent')->group(function () {
+Route::middleware(['auth', 'role:agent,administrateur'])->prefix('agent')->group(function () {
     Route::get('/tableau-de-bord', [App\Http\Controllers\Api\V1\AgentController::class, 'dashboard'])->name('agent.dashboard');
 
     Route::get('/demandes', function () {
@@ -141,7 +143,7 @@ Route::middleware(['auth:sanctum', 'role:agent,administrateur'])->prefix('agent'
 });
 
 // Admin Routes
-Route::middleware(['auth:sanctum', 'role:administrateur'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->group(function () {
     Route::get('/tableau-de-bord', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/utilisateurs', [AdminController::class, 'users'])->name('admin.users');
     Route::get('/dossiers', [AdminController::class, 'demandes'])->name('admin.demandes');

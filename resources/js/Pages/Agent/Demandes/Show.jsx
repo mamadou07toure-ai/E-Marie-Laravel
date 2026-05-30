@@ -225,6 +225,19 @@ export default function Show({ uuid }) {
         setTimeout(() => window.print(), 800);
     };
 
+    const handleCloseDossier = async () => {
+        setIsUpdating(true);
+        try {
+            await axios.post(`/api/v1/agent/demandes/${uuid}/close`, {}, { withCredentials: true });
+            toast.success('Dossier marqué comme remis avec succès !');
+            fetchDemande();
+        } catch {
+            toast.error("Erreur lors de la clôture du dossier.");
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     const renderStructuredData = () => {
         if (!demande) return null;
 
@@ -403,7 +416,7 @@ export default function Show({ uuid }) {
         </AgentLayout>
     );
 
-    const isClosed = demande.statut === 'validee' || demande.statut === 'rejetee';
+    const isClosed = demande.statut === 'validee' || demande.statut === 'rejetee' || demande.statut === 'remise';
 
     return (
         <AgentLayout title={`Dossier ${demande.numero_dossier}`}>
@@ -424,12 +437,14 @@ export default function Show({ uuid }) {
                                     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border-2 flex items-center gap-2 ${
                                         demande.statut === 'validee'          ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                                         demande.statut === 'rejetee'          ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                        demande.statut === 'remise'           ? 'bg-violet-50 text-violet-600 border-violet-100' :
                                         demande.statut === 'document_manquant'? 'bg-amber-50 text-amber-600 border-amber-100' :
                                         'bg-indigo-50 text-indigo-600 border-indigo-100'
                                     }`}>
                                         <div className={`w-1.5 h-1.5 rounded-full ${
                                             demande.statut === 'validee'           ? 'bg-emerald-500' :
                                             demande.statut === 'rejetee'           ? 'bg-rose-500' :
+                                            demande.statut === 'remise'            ? 'bg-violet-500' :
                                             demande.statut === 'document_manquant' ? 'bg-amber-500' :
                                             'bg-indigo-500 animate-pulse'
                                         }`} />
@@ -782,14 +797,18 @@ export default function Show({ uuid }) {
                                     {/* Dossier clôturé */}
                                     {isClosed && (
                                         <div className={`p-5 rounded-[2rem] border-2 text-center ${
-                                            demande.statut === 'validee'
-                                                ? 'bg-emerald-50 border-emerald-200'
-                                                : 'bg-rose-50 border-rose-200'
+                                            demande.statut === 'remise' ? 'bg-violet-50 border-violet-200' :
+                                            demande.statut === 'validee' ? 'bg-emerald-50 border-emerald-200' :
+                                            'bg-rose-50 border-rose-200'
                                         }`}>
                                             <p className={`text-[10px] font-black uppercase tracking-widest ${
-                                                demande.statut === 'validee' ? 'text-emerald-600' : 'text-rose-600'
+                                                demande.statut === 'remise' ? 'text-violet-600' :
+                                                demande.statut === 'validee' ? 'text-emerald-600' : 
+                                                'text-rose-600'
                                             }`}>
-                                                {demande.statut === 'validee' ? '✓ Dossier validé' : '✗ Dossier rejeté'}
+                                                {demande.statut === 'remise' ? '✓ Dossier remis (Clos)' : 
+                                                 demande.statut === 'validee' ? '✓ Dossier validé' : 
+                                                 '✗ Dossier rejeté'}
                                             </p>
                                             {demande.date_cloture && (
                                                 <p className="text-[9px] text-slate-400 mt-1">
@@ -797,6 +816,17 @@ export default function Show({ uuid }) {
                                                 </p>
                                             )}
                                         </div>
+                                    )}
+
+                                    {demande.statut === 'validee' && demande.is_physical_pickup && (
+                                        <button
+                                            onClick={handleCloseDossier}
+                                            disabled={isUpdating}
+                                            className="w-full mt-4 py-5 bg-violet-600 hover:bg-violet-700 text-white rounded-[2rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-violet-600/20 active:scale-95 flex items-center justify-center gap-3"
+                                        >
+                                            {isUpdating ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={18} />}
+                                            Marquer comme remis
+                                        </button>
                                     )}
 
                                     {/* Responsable */}
@@ -818,26 +848,52 @@ export default function Show({ uuid }) {
 
                                     {/* QR Code de Sécurisation */}
                                     {demande.statut === 'validee' && (
-                                        <div className="mt-6 p-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-center space-y-4">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
-                                                <ShieldCheck size={14} className="text-emerald-500" />
-                                                Garantie d'Authenticité QR
-                                            </p>
-                                            <div className="flex justify-center bg-white p-4 rounded-2xl border border-slate-100/80 shadow-sm max-w-[150px] mx-auto">
+                                        <div className="relative mt-6 bg-slate-950 text-white rounded-[2rem] border border-slate-800 shadow-xl p-8 text-center space-y-4 overflow-hidden group">
+                                            {/* Ticket cuts (Hollow circle effect) */}
+                                            <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-slate-50 rounded-full border border-slate-800 z-20"></div>
+                                            <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-slate-50 rounded-full border border-slate-800 z-20"></div>
+
+                                            <div className="absolute top-0 right-0 p-4 opacity-5">
+                                                <ShieldCheck size={48} className="text-emerald-400" />
+                                            </div>
+
+                                            <div>
+                                                <span className="inline-block px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 text-[8px] font-black uppercase tracking-widest mb-1 border border-emerald-500/20">
+                                                    ✔ Acte Authentifié
+                                                </span>
+                                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-3">Ticket de Garantie</h3>
+                                            </div>
+
+                                            <div className="border-t border-dashed border-slate-800 my-4 relative">
+                                                <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 px-2 bg-slate-950 text-[7px] text-slate-500 font-bold uppercase tracking-[0.25em]">
+                                                    SÉCURITÉ ÉTAT CIVIL
+                                                </span>
+                                            </div>
+
+                                            <div className="flex justify-center bg-white p-3 rounded-2xl border border-slate-800 shadow-inner max-w-[140px] mx-auto group-hover:scale-105 transition-transform duration-300">
                                                 <img 
-                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.origin + '/verify/demandes/' + uuid)}`} 
+                                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                                                        `┌─────────────────────────────────┐\n│      RÉPUBLIQUE DE GUINÉE       │\n│     - SMART E-MAIRIE TICKET -   │\n├─────────────────────────────────┤\n│ DOSSIER  : ${demande.numero_dossier.padEnd(20)} │\n│ SERVICE  : ${(demande.type_demande?.libelle || 'Civil').padEnd(20)} │\n│ TITULAIRE: ${((demande.user?.prenom || '') + ' ' + (demande.user?.nom || '')).substring(0, 20).padEnd(20)} │\n│ STATUT   : VALIDE & AUTHENTIQUE │\n│ DATE     : ${new Date(demande.updated_at).toLocaleDateString('fr-FR').padEnd(20)} │\n│ SIGNATURE: ${(demande.agent ? (demande.agent.prenom + ' ' + demande.agent.nom) : 'Officier').substring(0, 20).padEnd(20)} │\n├─────────────────────────────────┤\n│      EMPREINTE DE SÉCURITÉ      │\n│  ${(demande.uuid || uuid).substring(0,28)}  │\n└─────────────────────────────────┘`
+                                                    )}`} 
                                                     alt="QR Code de vérification" 
-                                                    className="w-28 h-28"
+                                                    className="w-32 h-32"
                                                 />
                                             </div>
-                                            <a 
-                                                href={`/verify/demandes/${uuid}`} 
-                                                target="_blank" 
-                                                rel="noreferrer" 
-                                                className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center justify-center gap-1"
-                                            >
-                                                <ExternalLink size={10} /> Voir la page de certification
-                                            </a>
+
+                                            <p className="text-[9px] text-slate-400 max-w-[200px] mx-auto leading-relaxed pt-2">
+                                                Scannez ce ticket de sécurité pour valider l'authenticité de l'acte hors-ligne.
+                                            </p>
+
+                                            <div className="pt-2">
+                                                <a 
+                                                    href={`/verify/demandes/${demande.uuid || uuid}`} 
+                                                    target="_blank" 
+                                                    rel="noreferrer" 
+                                                    className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest hover:underline flex items-center justify-center gap-1"
+                                                >
+                                                    <ExternalLink size={10} /> Consulter en ligne
+                                                </a>
+                                            </div>
                                         </div>
                                     )}
 

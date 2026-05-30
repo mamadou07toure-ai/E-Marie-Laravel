@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<style>
+    @page { margin: 0; size: A4; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 9.5px; color: #1a1a2e; background: #fff; }
+
+    .top-band { background: #7f1d1d; padding: 0 40px; height: 90px; position: relative; overflow: hidden; }
+    .top-band::after { content: ''; position: absolute; top: 0; right: 0; width: 220px; height: 90px; background: #dc2626; clip-path: polygon(40px 0, 100% 0, 100% 100%, 0 100%); }
+    .top-band-content { position: relative; z-index: 10; display: table; width: 100%; height: 90px; }
+    .top-band-left  { display: table-cell; vertical-align: middle; width: 55%; }
+    .top-band-right { display: table-cell; vertical-align: middle; width: 45%; text-align: right; }
+
+    .country-name  { font-size: 13px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+    .country-motto { font-size: 8px; color: rgba(255,255,255,0.65); margin-top: 3px; font-style: italic; }
+    .flag-inline { display: inline-block; vertical-align: middle; margin-right: 10px; }
+    .flag-inline table { border-collapse: collapse; }
+    .flag-inline td { width: 14px; height: 26px; }
+    .f-r { background: #ce1126; } .f-y { background: #fcd116; } .f-g { background: #009b48; }
+    .doc-ref-box .ref-label { font-size: 8px; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 1px; }
+    .doc-ref-box .ref-value { font-size: 10px; font-weight: 900; color: #fff; margin-top: 2px; font-family: monospace; }
+
+    .title-band { background: #fff5f5; border-bottom: 1px solid #fecaca; padding: 16px 40px; }
+    .doc-main-title { font-size: 19px; font-weight: 900; color: #7f1d1d; text-transform: uppercase; letter-spacing: 1px; }
+    .doc-main-sub   { font-size: 8px; font-weight: 700; color: #dc2626; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+
+    .body-wrap { padding: 20px 40px 200px 40px; }
+    .cert-paragraph { font-size: 9.5px; color: #374151; line-height: 1.75; border-left: 3px solid #dc2626; padding-left: 12px; margin-bottom: 20px; font-style: italic; }
+
+    .section { margin-bottom: 18px; }
+    .section-head-left { background: #7f1d1d; color: white; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; padding: 5px 14px; display: block; }
+
+    /* Grille en 2 colonnes pour époux/épouse */
+    .couple-grid { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 18px; }
+    .couple-grid td { width: 50%; vertical-align: top; }
+    .couple-col-title { background: #7f1d1d; color: white; font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; padding: 5px 14px; display: block; margin-bottom: 0; }
+
+    .data-grid { width: 100%; border-collapse: collapse; }
+    .data-grid tr { border-bottom: 1px solid #f1f5f9; }
+    .data-grid tr:nth-child(even) td { background: #fff9f9; }
+    .data-grid .k { width: 40%; font-size: 8px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .3px; padding: 7px 10px; border-right: 2px solid #dc2626; vertical-align: middle; }
+    .data-grid .v { font-size: 11px; font-weight: 900; color: #111827; padding: 7px 10px; vertical-align: middle; }
+
+    .data-grid-full .k { width: 36%; padding: 7px 14px; }
+    .data-grid-full .v { padding: 7px 14px; }
+
+    .footer-fixed { position: fixed; bottom: 0; left: 0; right: 0; height: 185px; background: #fff; border-top: 1px solid #fecaca; padding: 14px 40px 0 40px; }
+    .footer-inner { display: table; width: 100%; }
+    .foot-qr  { display: table-cell; width: 24%; vertical-align: top; }
+    .foot-mid { display: table-cell; width: 52%; vertical-align: top; text-align: center; padding: 0 20px; }
+    .foot-sign{ display: table-cell; width: 24%; vertical-align: top; text-align: right; }
+    .qr-img-box { border: 1px solid #fecaca; padding: 3px; display: inline-block; background: #fff; }
+    .qr-caption { font-size: 7px; color: #9ca3af; margin-top: 4px; font-weight: 700; text-transform: uppercase; }
+    .uuid-mono  { font-size: 6.5px; color: #7f1d1d; font-family: monospace; margin-top: 2px; }
+    .seal-ring { width: 72px; height: 72px; border-radius: 50%; border: 2px solid #7f1d1d; margin: 0 auto 6px; text-align: center; padding-top: 12px; font-size: 7px; font-weight: 900; color: #7f1d1d; text-transform: uppercase; line-height: 1.4; }
+    .seal-inner { border: 1px dashed #7f1d1d; border-radius: 50%; margin: 3px; padding: 6px 2px 2px; height: 60px; }
+    .foot-legal { font-size: 7px; color: #9ca3af; text-align: center; text-transform: uppercase; letter-spacing: .5px; margin-top: 6px; border-top: 1px dashed #fecaca; padding-top: 6px; }
+    .sign-label { font-size: 8.5px; font-weight: 900; color: #7f1d1d; text-transform: uppercase; }
+    .sign-city  { font-size: 7.5px; color: #6b7280; font-style: italic; margin-top: 2px; }
+    .sign-space { height: 40px; border-bottom: 1px dashed #9ca3af; margin: 8px 0 0; }
+    .sign-note  { font-size: 7px; color: #9ca3af; margin-top: 3px; }
+    .bottom-accent { position: fixed; bottom: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #7f1d1d, #dc2626, #f87171); }
+</style>
+</head>
+<body>
+@php
+    $d = $demande->donnees_formulaire ?? [];
+    \Carbon\Carbon::setLocale('fr');
+@endphp
+
+<div class="footer-fixed">
+    <div class="footer-inner">
+        <div class="foot-qr">
+            <div class="qr-img-box"><img src="https://api.qrserver.com/v1/create-qr-code/?size=75x75&data={{ urlencode(config('app.url').'/verify/'.$demande->uuid) }}" width="75" height="75"/></div>
+            <div class="qr-caption">Vérification officielle</div>
+            <div class="uuid-mono">{{ substr($demande->uuid, 0, 24) }}...</div>
+        </div>
+        <div class="foot-mid">
+            <div class="seal-ring"><div class="seal-inner">MAIRIE<br>KALOUM<br>&#9733;</div></div>
+            <div class="foot-legal">Dossier : {{ $demande->numero_dossier }} &mdash; Smart e-Mairie &middot; République de Guinée<br>Toute falsification ou altération de ce document est punie par la loi.</div>
+        </div>
+        <div class="foot-sign">
+            <div class="sign-label">L'Officier de l'État Civil</div>
+            <div class="sign-city">Kaloum, le {{ now()->format('d/m/Y') }}</div>
+            <div class="sign-space"></div>
+            <div class="sign-note">(Signature et Cachet Officiel)</div>
+        </div>
+    </div>
+</div>
+<div class="bottom-accent"></div>
+
+<div class="top-band">
+    <div class="top-band-content">
+        <div class="top-band-left">
+            <div class="flag-inline"><table><tr><td class="f-r"></td><td class="f-y"></td><td class="f-g"></td></tr></table></div>
+            <div style="display:inline-block; vertical-align:middle;">
+                <div class="country-name">République de Guinée</div>
+                <div class="country-motto">Travail &middot; Justice &middot; Solidarité</div>
+                <div style="font-size:7.5px; color:rgba(255,255,255,0.5); margin-top:5px; text-transform:uppercase; letter-spacing:1px;">Commune de Kaloum — Service de l'État Civil</div>
+            </div>
+        </div>
+        <div class="top-band-right">
+            <div class="doc-ref-box">
+                <div class="ref-label">Acte N°</div>
+                <div class="ref-value">MAR-{{ str_pad($demande->id, 6, '0', STR_PAD_LEFT) }}</div>
+                <div class="ref-label" style="margin-top:6px;">Dossier</div>
+                <div class="ref-value">{{ $demande->numero_dossier }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="title-band">
+    <div class="doc-main-title">Certificat de Mariage</div>
+    <div class="doc-main-sub">Extrait officiel des registres de l'État Civil &mdash; {{ now()->format('Y') }}</div>
+</div>
+
+<div class="body-wrap">
+    <p class="cert-paragraph">
+        Le Maire de la Commune de Kaloum, Officier de l'État Civil, certifie que l'union matrimoniale entre les personnes désignées ci-dessous a été célébrée et dûment enregistrée dans nos registres, conformément aux lois de la République de Guinée.
+    </p>
+
+    <table class="couple-grid">
+        <tr>
+            <td>
+                <span class="couple-col-title">L'Époux</span>
+                <table class="data-grid">
+                    <tr><td class="k">Nom</td><td class="v">{{ strtoupper($d['nom_epoux'] ?? '—') }}</td></tr>
+                    <tr><td class="k">Prénom(s)</td><td class="v">{{ mb_convert_case($d['prenom_epoux'] ?? '—', MB_CASE_TITLE, 'UTF-8') }}</td></tr>
+                    <tr><td class="k">Né le</td><td class="v">{{ !empty($d['date_naissance_epoux']) ? \Carbon\Carbon::parse($d['date_naissance_epoux'])->isoFormat('D MMM YYYY') : '—' }}</td></tr>
+                    <tr><td class="k">À</td><td class="v">{{ strtoupper($d['lieu_naissance_epoux'] ?? '—') }}</td></tr>
+                </table>
+            </td>
+            <td>
+                <span class="couple-col-title">L'Épouse</span>
+                <table class="data-grid">
+                    <tr><td class="k">Nom</td><td class="v">{{ strtoupper($d['nom_epouse'] ?? '—') }}</td></tr>
+                    <tr><td class="k">Prénom(s)</td><td class="v">{{ mb_convert_case($d['prenom_epouse'] ?? '—', MB_CASE_TITLE, 'UTF-8') }}</td></tr>
+                    <tr><td class="k">Née le</td><td class="v">{{ !empty($d['date_naissance_epouse']) ? \Carbon\Carbon::parse($d['date_naissance_epouse'])->isoFormat('D MMM YYYY') : '—' }}</td></tr>
+                    <tr><td class="k">À</td><td class="v">{{ strtoupper($d['lieu_naissance_epouse'] ?? '—') }}</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="section">
+        <span class="section-head-left">Détails de l'Union Matrimoniale</span>
+        <table class="data-grid data-grid-full">
+            <tr><td class="k">Date du mariage</td><td class="v">{{ !empty($d['date_mariage']) ? \Carbon\Carbon::parse($d['date_mariage'])->isoFormat('D MMMM YYYY') : '—' }}</td></tr>
+            <tr><td class="k">Lieu de célébration</td><td class="v">{{ strtoupper($d['lieu_mariage'] ?? '—') }}</td></tr>
+            <tr><td class="k">N° acte original</td><td class="v">{{ $d['numero_acte'] ?? 'Non spécifié' }}</td></tr>
+            <tr><td class="k">Motif de la demande</td><td class="v">{{ $d['motif'] ?? '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -15,7 +15,9 @@ import {
     ChevronRight,
     X,
     FileUp,
-    AlertCircle
+    AlertCircle,
+    Building2,
+    Download
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 
@@ -26,7 +28,8 @@ export default function Create({ auth }) {
         priorite: 'normale',
         description: 'Demande effectuée via le portail citoyen.',
         fields: { nombre_copies: 1 },
-        documents: []
+        documents: [],
+        is_physical_pickup: false
     });
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState({});
@@ -58,6 +61,7 @@ export default function Create({ auth }) {
         formData.append('type_demande_id', data.type_demande_id);
         formData.append('priorite', data.priorite);
         formData.append('description', data.description);
+        formData.append('is_physical_pickup', data.is_physical_pickup ? '1' : '0');
         Object.entries(data.fields).forEach(([key, value]) => {
             if (value !== null && value !== undefined && value !== '') {
                 formData.append(`fields[${key}]`, value);
@@ -522,6 +526,61 @@ export default function Create({ auth }) {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* MODE DE RETRAIT */}
+                    <div className="bg-white p-16 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-10">
+                        <div className="flex items-center gap-4">
+                            <Building2 className="text-indigo-600" size={24} />
+                            <h3 className="font-black text-slate-900 text-lg tracking-tight">Mode de retrait souhaité</h3>
+                        </div>
+                        <p className="text-sm text-slate-500 mb-6">Choisissez comment vous souhaitez récupérer votre document officiel une fois validé.</p>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div 
+                                onClick={() => setData('is_physical_pickup', false)}
+                                className={`cursor-pointer rounded-[2rem] border-2 p-8 transition-all duration-300 ${
+                                    !data.is_physical_pickup 
+                                    ? 'border-indigo-500 bg-indigo-50 shadow-lg shadow-indigo-500/10' 
+                                    : 'border-slate-100 bg-white hover:border-slate-200'
+                                }`}
+                            >
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
+                                    !data.is_physical_pickup ? 'bg-indigo-600 text-white shadow-inner' : 'bg-slate-50 text-slate-400'
+                                }`}>
+                                    <Download className="w-7 h-7" />
+                                </div>
+                                <h4 className="font-black text-slate-900 text-lg mb-2">Téléchargement Numérique</h4>
+                                <p className="text-sm text-slate-500 leading-relaxed">Téléchargez votre document officiel directement depuis votre espace citoyen. Rapide et disponible 24h/24.</p>
+                                {!data.is_physical_pickup && (
+                                    <div className="mt-6 inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-200">
+                                        <CheckCircle2 size={14} /> Sélectionné
+                                    </div>
+                                )}
+                            </div>
+
+                            <div 
+                                onClick={() => setData('is_physical_pickup', true)}
+                                className={`cursor-pointer rounded-[2rem] border-2 p-8 transition-all duration-300 ${
+                                    data.is_physical_pickup 
+                                    ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-500/10' 
+                                    : 'border-slate-100 bg-white hover:border-slate-200'
+                                }`}
+                            >
+                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
+                                    data.is_physical_pickup ? 'bg-emerald-600 text-white shadow-inner' : 'bg-slate-50 text-slate-400'
+                                }`}>
+                                    <Building2 className="w-7 h-7" />
+                                </div>
+                                <h4 className="font-black text-slate-900 text-lg mb-2">Retrait Physique (Mairie)</h4>
+                                <p className="text-sm text-slate-500 leading-relaxed">Récupérez la copie certifiée conforme, tamponnée et signée au guichet physique de la Mairie de Kaloum.</p>
+                                {data.is_physical_pickup && (
+                                    <div className="mt-6 inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-emerald-200">
+                                        <CheckCircle2 size={14} /> Sélectionné
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-6">
