@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 
-export default function Show({ auth, demande }) {
+export default function Show({ auth, demande, has_active_template = false }) {
     const [showChatDrawer, setShowChatDrawer] = useState(false);
     const [chatMessages, setChatMessages]     = useState([]);
     const [chatMessageText, setChatMessageText] = useState('');
@@ -38,6 +38,7 @@ export default function Show({ auth, demande }) {
     const [selectedSlot, setSelectedSlot]     = useState(null); // The slot object
     const [rdvLoading, setRdvLoading]         = useState(false);
     const [rdvNotes, setRdvNotes]             = useState('');
+    const [generating, setGenerating]         = useState(false);
 
     useEffect(() => {
         fetchRdv();
@@ -138,6 +139,25 @@ export default function Show({ auth, demande }) {
         setTimeout(() => window.print(), 800);
     };
 
+    const handleGenerateDocument = async () => {
+        setGenerating(true);
+        try {
+            const res = await axios.get(`/api/v1/demandes/${demande.uuid}/generer-document`, {
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Document_${demande.numero_dossier}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error('Aucun modèle de document activé pour ce type de demande.');
+        } finally {
+            setGenerating(false);
+        }
+    };
+
     const handleContactAgent = () => {
         setShowChatDrawer(true);
     };
@@ -220,13 +240,24 @@ export default function Show({ auth, demande }) {
                                         <Printer size={18} />
                                     </button>
                                     {(demande.statut === 'validee' || demande.statut === 'remise') && (
-                                        <button 
-                                            onClick={() => handleDownload(demande.uuid, demande.is_physical_pickup)}
-                                            className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-indigo-600/20"
-                                        >
-                                            <Download size={16} /> 
-                                            {demande.is_physical_pickup ? 'Télécharger Bon de Retrait' : 'Télécharger Document Officiel'}
-                                        </button>
+                                        has_active_template ? (
+                                            <button
+                                                onClick={handleGenerateDocument}
+                                                disabled={generating}
+                                                className="px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-600/20 disabled:opacity-60"
+                                            >
+                                                {generating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                                Télécharger Document Officiel
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleDownload(demande.uuid, demande.is_physical_pickup)}
+                                                className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+                                            >
+                                                <Download size={16} />
+                                                {demande.is_physical_pickup ? 'Télécharger Bon de Retrait' : 'Télécharger Document Officiel'}
+                                            </button>
+                                        )
                                     )}
                                 </div>
                             </div>

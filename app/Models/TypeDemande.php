@@ -25,4 +25,9 @@ class TypeDemande extends Model
     {
         return $this->hasMany(Demande::class);
     }
+
+    public function documentTemplate()
+    {
+        return $this->hasOne(DocumentTemplate::class);
+    }
 }

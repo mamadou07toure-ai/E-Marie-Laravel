@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import {
     LayoutDashboard, Users, BarChart3, Settings,
-    LogOut, Menu, Bell, ShieldCheck, Monitor, FileText
+    LogOut, Menu, Bell, ShieldCheck, Monitor, FileText, FileImage
 } from 'lucide-react';
 import { Toaster } from 'sonner';
 
@@ -12,6 +12,7 @@ const NAV = [
     { name: 'Gestion Personnel', href: '/admin/utilisateurs',    icon: Users },
     { name: 'Statistiques',      href: '/admin/statistiques',    icon: BarChart3 },
     { name: 'État Système',      href: '/admin/systeme',         icon: Monitor },
+    { name: 'Modèles documents',  href: '/admin/modeles-documents', icon: FileImage },
     { name: 'Paramètres',        href: '/admin/parametres',      icon: Settings },
 ];
 

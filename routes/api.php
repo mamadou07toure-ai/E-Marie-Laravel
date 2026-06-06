@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DemandeController;
 use App\Http\Controllers\Api\V1\AgentController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Controllers\Api\V1\DocumentTemplateController;
 use App\Http\Controllers\Api\V1\MessageController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RendezVousController;
@@ -112,4 +113,16 @@ Route::prefix('v1')->group(function () {
         Route::post('/demandes/{uuid}/notes', [AgentController::class, 'addNote']);
         Route::post('/demandes/{uuid}/close', [AgentController::class, 'closeDossier']);
     });
+
+    // Document templates — admin uniquement pour la gestion, agent+citoyen pour la génération
+    Route::middleware(['auth:sanctum', 'role:administrateur'])->prefix('document-templates')->group(function () {
+        Route::get('/',            [DocumentTemplateController::class, 'index']);
+        Route::post('/',           [DocumentTemplateController::class, 'store']);
+        Route::put('/{id}/champs', [DocumentTemplateController::class, 'updateChamps']);
+        Route::patch('/{id}/toggle', [DocumentTemplateController::class, 'toggle']);
+        Route::delete('/{id}',     [DocumentTemplateController::class, 'destroy']);
+    });
+
+    // Génération PDF — accessible aux agents et citoyens authentifiés
+    Route::middleware('auth:sanctum')->get('/demandes/{uuid}/generer-document', [DocumentTemplateController::class, 'generer']);
 });

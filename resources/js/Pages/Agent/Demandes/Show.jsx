@@ -32,12 +32,13 @@ import {
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 
-export default function Show({ uuid }) {
+export default function Show({ uuid, has_active_template = false }) {
     const [demande, setDemande]             = useState(null);
     const [loading, setLoading]             = useState(true);
     const [isAssigning, setIsAssigning]     = useState(false);
     const [isUpdating, setIsUpdating]       = useState(false);
     const [showActionsMenu, setShowActionsMenu] = useState(false);
+    const [generating, setGenerating]           = useState(false);
 
     // Reject flow
     const [showRejectForm, setShowRejectForm] = useState(false);
@@ -223,6 +224,25 @@ export default function Show({ uuid }) {
     const handlePrint = () => {
         toast.info("Préparation du document pour l'impression...");
         setTimeout(() => window.print(), 800);
+    };
+
+    const handleGenerateDocument = async () => {
+        setGenerating(true);
+        try {
+            const res = await axios.get(`/api/v1/demandes/${uuid}/generer-document`, {
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Document_${demande.numero_dossier}.pdf`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error('Aucun modèle de document activé pour ce type de demande.');
+        } finally {
+            setGenerating(false);
+        }
     };
 
     const handleCloseDossier = async () => {
@@ -464,6 +484,16 @@ export default function Show({ uuid }) {
                             >
                                 <Printer size={20} />
                             </button>
+                            {demande.statut === 'validee' && has_active_template && (
+                                <button
+                                    onClick={handleGenerateDocument}
+                                    disabled={generating}
+                                    className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-60"
+                                >
+                                    {generating ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                                    Document officiel PDF
+                                </button>
+                            )}
                             <div className="w-px h-8 bg-slate-100 mx-2" />
                             {/* Actions dropdown — uniquement si dossier non clôturé */}
                             {!isClosed && (

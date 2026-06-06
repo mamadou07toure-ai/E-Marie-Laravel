@@ -164,6 +164,10 @@ Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->group(funct
     Route::get('/statistiques/export/pdf',   [AdminController::class, 'exportStatsPdf'])->name('admin.stats.export.pdf');
     Route::post('/dossiers/{uuid}/reassign', [AdminController::class, 'reassignDemande'])->name('admin.demandes.reassign');
 
+    Route::get('/modeles-documents', function () {
+        return Inertia::render('Admin/DocumentTemplates');
+    })->name('admin.document-templates');
+
     Route::get('/parametres', function () {
         return Inertia::render('Admin/Settings');
     })->name('admin.settings');
