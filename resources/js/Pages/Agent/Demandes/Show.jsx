@@ -33,6 +33,18 @@ import {
 import { toast, Toaster } from 'sonner';
 
 export default function Show({ uuid, has_active_template = false }) {
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const d = new Date(dateString);
+        return isNaN(d.getTime()) ? dateString : d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const formatDateTime = (dateString) => {
+        if (!dateString) return '';
+        const d = new Date(dateString);
+        return isNaN(d.getTime()) ? dateString : d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
     const [demande, setDemande]             = useState(null);
     const [loading, setLoading]             = useState(true);
     const [isAssigning, setIsAssigning]     = useState(false);
@@ -251,8 +263,10 @@ export default function Show({ uuid, has_active_template = false }) {
             await axios.post(`/api/v1/agent/demandes/${uuid}/close`, {}, { withCredentials: true });
             toast.success('Dossier marqué comme remis avec succès !');
             fetchDemande();
-        } catch {
-            toast.error("Erreur lors de la clôture du dossier.");
+            fetchRdv();
+        } catch (error) {
+            const msg = error.response?.data?.message || "Erreur lors de la clôture du dossier.";
+            toast.error(msg);
         } finally {
             setIsUpdating(false);
         }
@@ -276,7 +290,7 @@ export default function Show({ uuid, has_active_template = false }) {
                     <div className={gridClass}>
                         <div><span className={labelClass}>Nom Titulaire</span><p className={valClass}>{n.nom}</p></div>
                         <div><span className={labelClass}>Prénom(s)</span><p className={valClass}>{n.prenoms}</p></div>
-                        <div><span className={labelClass}>Date de naissance</span><p className={valClass}>{n.date_naissance}</p></div>
+                        <div><span className={labelClass}>Date de naissance</span><p className={valClass}>{formatDate(n.date_naissance)}</p></div>
                         <div><span className={labelClass}>Lieu de naissance</span><p className={valClass}>{n.lieu_naissance}</p></div>
                         <div><span className={labelClass}>Genre</span><p className={valClass}>{n.genre === 'M' ? 'Masculin' : 'Féminin'}</p></div>
                         <div><span className={labelClass}>Motif</span><p className={valClass}>{n.motif}</p></div>
@@ -330,7 +344,7 @@ export default function Show({ uuid, has_active_template = false }) {
                     <div className={gridClass}>
                         <div><span className={labelClass}>Époux — Nom & Prénom</span><p className={valClass}>{m.prenom_epoux} {m.nom_epoux}</p></div>
                         <div><span className={labelClass}>Épouse — Nom & Prénom</span><p className={valClass}>{m.prenom_epouse} {m.nom_epouse}</p></div>
-                        <div><span className={labelClass}>Date du mariage</span><p className={valClass}>{m.date_mariage}</p></div>
+                        <div><span className={labelClass}>Date du mariage</span><p className={valClass}>{formatDate(m.date_mariage)}</p></div>
                         <div><span className={labelClass}>Lieu du mariage</span><p className={valClass}>{m.lieu_mariage}</p></div>
                     </div>
                 </div>
@@ -369,8 +383,8 @@ export default function Show({ uuid, has_active_template = false }) {
                     <div className={gridClass}>
                         <div><span className={labelClass}>Nature de l'autorisation</span><p className={valClass}>{a.nature_autorisation}</p></div>
                         <div><span className={labelClass}>Adresse de l'activité</span><p className={valClass}>{a.adresse_activite}</p></div>
-                        <div><span className={labelClass}>Date de début</span><p className={valClass}>{a.date_debut}</p></div>
-                        {a.date_fin && <div><span className={labelClass}>Date de fin</span><p className={valClass}>{a.date_fin}</p></div>}
+                        <div><span className={labelClass}>Date de début</span><p className={valClass}>{formatDate(a.date_debut)}</p></div>
+                        {a.date_fin && <div><span className={labelClass}>Date de fin</span><p className={valClass}>{formatDate(a.date_fin)}</p></div>}
                         {a.nombre_personnes && <div><span className={labelClass}>Nombre de personnes</span><p className={valClass}>{a.nombre_personnes}</p></div>}
                         {a.description_detaillee && (
                             <div className="col-span-full"><span className={labelClass}>Description détaillée</span><p className={valClass}>{a.description_detaillee}</p></div>
@@ -392,7 +406,7 @@ export default function Show({ uuid, has_active_template = false }) {
                     <div className={gridClass}>
                         <div><span className={labelClass}>Ancienne adresse</span><p className={valClass}>{c.ancienne_adresse}</p></div>
                         <div><span className={labelClass}>Nouvelle adresse</span><p className={valClass}>{c.nouvelle_adresse}</p></div>
-                        <div><span className={labelClass}>Date d'installation</span><p className={valClass}>{c.date_installation}</p></div>
+                        <div><span className={labelClass}>Date d'installation</span><p className={valClass}>{formatDate(c.date_installation)}</p></div>
                         {c.quartier_commune_nouveau && <div><span className={labelClass}>Nouveau quartier / commune</span><p className={valClass}>{c.quartier_commune_nouveau}</p></div>}
                         {c.motif_changement && (
                             <div className="col-span-full"><span className={labelClass}>Motif du changement</span><p className={valClass}>{c.motif_changement}</p></div>
@@ -472,7 +486,7 @@ export default function Show({ uuid, has_active_template = false }) {
                                     </span>
                                 </div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    {demande.type_demande?.libelle} • Déposé le {new Date(demande.created_at).toLocaleDateString('fr-FR')}
+                                    {demande.type_demande?.libelle} • Déposé le {formatDate(demande.created_at)}
                                 </p>
                             </div>
                         </div>
@@ -685,7 +699,7 @@ export default function Show({ uuid, has_active_template = false }) {
                                                             </span>
                                                         </div>
                                                         <p className="text-[10px] text-slate-400 font-bold uppercase italic">
-                                                            {new Date(h.created_at).toLocaleString('fr-FR')}
+                                                            {formatDateTime(h.created_at)}
                                                         </p>
                                                     </div>
                                                     {h.commentaire && (
@@ -848,7 +862,7 @@ export default function Show({ uuid, has_active_template = false }) {
                                         </div>
                                     )}
 
-                                    {demande.statut === 'validee' && demande.is_physical_pickup && (
+                                    {demande.statut === 'validee' && (
                                         <button
                                             onClick={handleCloseDossier}
                                             disabled={isUpdating}
@@ -928,25 +942,30 @@ export default function Show({ uuid, has_active_template = false }) {
                                     )}
 
                                     {/* Statut Rendez-vous Retrait */}
-                                    {demande.statut === 'validee' && rdv && (
-                                        <div className="mt-4 p-6 bg-emerald-50/50 border border-emerald-100 rounded-[2rem] text-center space-y-2">
-                                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest flex items-center justify-center gap-2">
+                                    {(demande.statut === 'validee' || demande.statut === 'remise') && rdv?.date_rdv && (
+                                        <div className={`mt-4 p-6 border rounded-[2rem] text-center space-y-2 ${demande.statut === 'remise' ? 'bg-violet-50/50 border-violet-100' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                                            <p className={`text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 ${demande.statut === 'remise' ? 'text-violet-600' : 'text-emerald-600'}`}>
                                                 <Calendar size={14} />
-                                                Retrait Physique Planifié
+                                                {demande.statut === 'remise' ? 'Retrait Physique Effectué' : 'Retrait Physique Planifié'}
                                             </p>
                                             <p className="text-xs font-black text-slate-800">
                                                 Le {new Date(rdv.date_rdv).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                                             </p>
-                                            <p className="text-[14px] font-black text-emerald-600">
+                                            <p className={`text-[14px] font-black ${demande.statut === 'remise' ? 'text-violet-600' : 'text-emerald-600'}`}>
                                                 à {new Date(rdv.date_rdv).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                                             </p>
-                                            <span className="inline-block px-3 py-1 bg-emerald-500 text-white rounded-full text-[8px] font-black uppercase tracking-widest mt-1">
-                                                ✓ Confirmé
+                                            <span className={`inline-block px-3 py-1 text-white rounded-full text-[8px] font-black uppercase tracking-widest mt-1 ${demande.statut === 'remise' ? 'bg-violet-500' : 'bg-emerald-500'}`}>
+                                                {demande.statut === 'remise' ? '✓ Document remis' : '✓ Confirmé'}
                                             </span>
+                                            {demande.statut === 'remise' && demande.date_cloture && (
+                                                <p className="text-[10px] text-violet-500 mt-1">
+                                                    Remis le {new Date(demande.date_cloture).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                     
-                                    {demande.statut === 'validee' && !rdv && (
+                                    {demande.statut === 'validee' && !rdv?.date_rdv && (
                                         <div className="mt-4 p-6 bg-slate-50 border border-slate-100 rounded-[2rem] text-center">
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2 mb-1">
                                                 <Calendar size={14} />
@@ -972,7 +991,7 @@ export default function Show({ uuid, has_active_template = false }) {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-black text-slate-900 tracking-tight">{demande.user?.prenom} {demande.user?.nom}</p>
-                                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">ID: #{demande.user?.id}</p>
+                                                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">Citoyen</p>
                                             </div>
                                         </div>
                                         <div className="space-y-4">
@@ -1105,7 +1124,7 @@ export default function Show({ uuid, has_active_template = false }) {
                                         <p className="whitespace-pre-wrap">{msg.contenu}</p>
                                     </div>
                                     <span className="text-[8px] text-slate-600 mt-1">
-                                        {new Date(msg.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                        {formatDateTime(msg.created_at)}
                                     </span>
                                 </div>
                             );

@@ -20,7 +20,18 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
         ]);
 
+        // Active EnsureFrontendRequestsAreStateful pour les routes /api/*
+        // Cela partage la session web avec les requêtes API (cookie-based auth)
         $middleware->statefulApi();
+
+        // Suppression d'AuthenticateSession sur TOUTES les stacks :
+        // Ce middleware invalide la session si le hash du mot de passe a changé
+        // en DB depuis la connexion, provoquant des déconnexions silencieuses
+        // lors des appels API en arrière-plan (polling notifications/messages).
+        $middleware->remove([
+            \Illuminate\Session\Middleware\AuthenticateSession::class,
+            \Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

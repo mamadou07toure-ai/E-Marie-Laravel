@@ -23,8 +23,10 @@ export default function Index({ title = "Tous les dossiers", mine = false }) {
             if (filter !== 'all') params.statut = filter;
             const response = await axios.get('/api/v1/agent/demandes', { params });
             setDemandes(response.data.data || []);
-        } catch {
-            toast.error('Impossible de charger les dossiers.');
+        } catch (error) {
+            console.error('Fetch error:', error);
+            const msg = error.response?.data?.message || error.message || 'Erreur inconnue';
+            toast.error('Impossible de charger les dossiers : ' + msg);
         } finally {
             setLoading(false);
         }

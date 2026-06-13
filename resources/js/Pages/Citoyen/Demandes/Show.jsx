@@ -135,8 +135,382 @@ export default function Show({ auth, demande, has_active_template = false }) {
     };
 
     const handlePrint = () => {
-        toast.info("Préparation du document pour l'impression...");
-        setTimeout(() => window.print(), 800);
+        const statutMap = {
+            en_attente:        { label: 'En attente',          dot: ''       },
+            en_cours:          { label: 'En cours',            dot: 'active' },
+            document_manquant: { label: 'Document manquant',   dot: 'warn'   },
+            validee:           { label: 'Validé',              dot: 'done'   },
+            rejetee:           { label: 'Rejeté',              dot: 'error'  },
+            remise:            { label: 'Remis au guichet',    dot: 'done'   },
+        };
+        const statutLabel = statutMap[demande.statut]?.label ?? demande.statut;
+
+        const agentNom = demande.agent
+            ? `${demande.agent.prenom} ${demande.agent.nom}`
+            : 'Non assigné';
+
+        const histItems = (demande.historique_statuts ?? []);
+        const timelineHtml = histItems.map((h, i) => {
+            const info = {
+                en_attente:        { label: 'Demande déposée',               dot: 'done'   },
+                en_cours:          { label: 'Prise en charge par un agent',  dot: 'active' },
+                document_manquant: { label: 'Document manquant signalé',     dot: 'warn'   },
+                validee:           { label: 'Dossier validé',                dot: 'done'   },
+                rejetee:           { label: 'Demande rejetée',               dot: 'error'  },
+                remise:            { label: 'Document remis au guichet',     dot: 'done'   },
+            }[h.nouveau_statut] ?? { label: h.nouveau_statut, dot: '' };
+
+            const isLast  = i === histItems.length - 1;
+            const dotCls  = isLast ? info.dot : 'done';
+            const dateStr = new Date(h.created_at).toLocaleString('fr-FR', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+            });
+            return `
+            <div class="tl-item">
+              <div class="tl-dot ${dotCls}"></div>
+              <div class="tl-content">
+                <div class="tl-row">
+                  <span class="tl-label">${info.label}</span>
+                  <span class="tl-date">${dateStr}</span>
+                </div>
+                ${h.commentaire ? `<div class="tl-comment">${h.commentaire}</div>` : ''}
+              </div>
+            </div>`;
+        }).join('');
+
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=1e3a8a&bgcolor=ffffff&data=${encodeURIComponent(window.location.origin + '/verify/demandes/' + demande.uuid)}`;
+        const emitDate = new Date().toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const depotDate = new Date(demande.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        const citizenName = `${auth?.user?.prenom ?? ''} ${auth?.user?.nom ?? ''}`.trim();
+
+        const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<title>Récépissé ${demande.numero_dossier}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: #eef2f7;
+    color: #0f172a;
+    font-size: 11px;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 794px;
+    min-height: 1122px;
+    margin: 24px auto;
+    background: #ffffff;
+    border-radius: 4px;
+    box-shadow: 0 4px 32px rgba(0,0,0,.10);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── Gradient top stripe ── */
+  .stripe {
+    height: 7px;
+    background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 55%, #38bdf8 100%);
+  }
+
+  /* ── Header ── */
+  .hd {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 22px 36px 18px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .hd-brand { display: flex; align-items: center; gap: 14px; }
+
+  .hd-logo {
+    width: 54px; height: 54px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 18px; font-weight: 900; letter-spacing: -1px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(37,99,235,.35);
+  }
+
+  .hd-brand-text h1 { font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -.5px; }
+  .hd-brand-text p  { font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; margin-top: 3px; }
+
+  .hd-meta { text-align: right; }
+  .hd-meta .doc-type { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: #2563eb; margin-bottom: 5px; }
+  .hd-meta .doc-num  { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -1.5px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .hd-meta .doc-emit { font-size: 9px; color: #94a3b8; margin-top: 5px; }
+
+  /* ── Title band ── */
+  .title-band {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 13px 36px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .title-band h2 { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: #1e293b; }
+
+  /* ── Status badge ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 14px; border-radius: 99px;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .badge::before { content:''; width:6px; height:6px; border-radius:50%; background: currentColor; display:block; }
+  .s-en_attente        { background:#f1f5f9;  color:#475569; }
+  .s-en_cours          { background:#dbeafe;  color:#1d4ed8; }
+  .s-document_manquant { background:#fef9c3;  color:#b45309; }
+  .s-validee           { background:#dcfce7;  color:#15803d; }
+  .s-rejetee           { background:#fee2e2;  color:#dc2626; }
+  .s-remise            { background:#ede9fe;  color:#7c3aed; }
+
+  /* ── Body ── */
+  .body { padding: 26px 36px; }
+
+  /* ── Section ── */
+  .section { margin-bottom: 24px; }
+  .sec-hd { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .sec-title { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: #94a3b8; white-space: nowrap; }
+  .sec-rule { flex:1; height:1px; background:#e2e8f0; }
+
+  /* ── Info grid cards ── */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;
+  }
+  .ic {
+    padding: 14px 18px;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .ic:nth-child(even)       { border-right: none; }
+  .ic:nth-last-child(-n+2)  { border-bottom: none; }
+  .ic:only-child            { border-right: none; border-bottom: none; }
+  .ic-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; margin-bottom: 4px; }
+  .ic-value { font-size: 12px; font-weight: 600; color: #0f172a; }
+
+  /* ── Description box ── */
+  .desc-box {
+    margin-top: 14px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-left: 3px solid #2563eb; border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .desc-box .desc-lbl { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #64748b; margin-bottom: 5px; }
+  .desc-box p { font-size: 11px; color: #374151; font-style: italic; line-height: 1.7; }
+
+  /* ── Two-column layout (info + qr) ── */
+  .two-col { display: grid; grid-template-columns: 1fr 140px; gap: 24px; align-items: start; }
+
+  /* ── Timeline ── */
+  .tl { padding-left: 18px; position: relative; }
+  .tl::before { content:''; position:absolute; left:5px; top:7px; bottom:7px; width:1.5px; background:#e2e8f0; }
+  .tl-item { position:relative; padding: 0 0 16px 18px; }
+  .tl-item:last-child { padding-bottom: 0; }
+  .tl-dot {
+    position:absolute; left:-13px; top:3px;
+    width:11px; height:11px; border-radius:50%;
+    background:#cbd5e1; border:2px solid #fff;
+    box-shadow:0 0 0 1.5px #cbd5e1;
+  }
+  .tl-dot.done   { background:#22c55e; box-shadow:0 0 0 1.5px #22c55e; }
+  .tl-dot.active { background:#3b82f6; box-shadow:0 0 0 1.5px #3b82f6; }
+  .tl-dot.error  { background:#ef4444; box-shadow:0 0 0 1.5px #ef4444; }
+  .tl-dot.warn   { background:#f59e0b; box-shadow:0 0 0 1.5px #f59e0b; }
+  .tl-row { display:flex; justify-content:space-between; align-items:baseline; }
+  .tl-label { font-size:11.5px; font-weight:600; color:#0f172a; }
+  .tl-date  { font-size:9px; color:#94a3b8; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .tl-comment { font-size:10px; color:#64748b; font-style:italic; margin-top:3px; }
+
+  /* ── QR panel ── */
+  .qr-panel {
+    display:flex; flex-direction:column; align-items:center;
+    background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;
+    padding:16px 12px; gap:8px;
+  }
+  .qr-panel img { border-radius:6px; display:block; }
+  .qr-label { font-size:7.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px; color:#94a3b8; text-align:center; }
+
+  /* ── Signatures ── */
+  .sigs { display:flex; justify-content:space-between; margin-top:28px; padding-top:20px; border-top:1px dashed #e2e8f0; }
+  .sig { width:190px; }
+  .sig-line { height:44px; border-bottom:1.5px solid #1e293b; margin-bottom:6px; }
+  .sig-name { font-size:10px; font-weight:700; color:#374151; }
+  .sig-role { font-size:8.5px; color:#94a3b8; }
+
+  /* ── Footer ── */
+  .foot {
+    margin-top: 28px; padding: 18px 36px;
+    background:#f8fafc; border-top:1px solid #e2e8f0;
+    display:flex; align-items:flex-start; justify-content:space-between; gap:24px;
+  }
+  .foot-disc { font-size:8.5px; color:#94a3b8; line-height:1.8; max-width:440px; }
+  .foot-disc strong { color:#64748b; }
+  .foot-uuid { margin-top:6px; font-family:'Courier New',monospace; font-size:7.5px; color:#cbd5e1; letter-spacing:.3px; word-break:break-all; }
+  .foot-stamp {
+    flex-shrink:0; width:82px; height:82px; border-radius:50%;
+    border:2.5px dashed #cbd5e1;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:10px;
+    color:#cbd5e1; font-size:7.5px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.8px; line-height:1.5;
+  }
+
+
+  @media print {
+    body { background:#fff; }
+    .page { margin:0; border-radius:0; box-shadow:none; width:100%; min-height:100vh; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="stripe"></div>
+
+  <!-- Header -->
+  <div class="hd">
+    <div class="hd-brand">
+      <div class="hd-logo">SE</div>
+      <div class="hd-brand-text">
+        <h1>Smart e-Mairie</h1>
+        <p>République de Guinée &nbsp;·&nbsp; Service de l'État Civil</p>
+      </div>
+    </div>
+    <div class="hd-meta">
+      <p class="doc-type">Récépissé de demande</p>
+      <p class="doc-num">${demande.numero_dossier}</p>
+      <p class="doc-emit">Émis le ${emitDate}</p>
+    </div>
+  </div>
+
+  <!-- Title band -->
+  <div class="title-band">
+    <h2>Récépissé de dépôt de dossier</h2>
+    <span class="badge s-${demande.statut}">${statutLabel}</span>
+  </div>
+
+  <div class="body">
+
+    <!-- Dossier info -->
+    <div class="section">
+      <div class="sec-hd"><span class="sec-title">Informations du dossier</span><div class="sec-rule"></div></div>
+      <div class="info-grid">
+        <div class="ic">
+          <div class="ic-label">Type de service</div>
+          <div class="ic-value">${demande.type_demande?.libelle ?? '—'}</div>
+        </div>
+        <div class="ic">
+          <div class="ic-label">Date de dépôt</div>
+          <div class="ic-value">${depotDate}</div>
+        </div>
+        <div class="ic">
+          <div class="ic-label">Priorité</div>
+          <div class="ic-value">${demande.priorite ?? 'Normale'}</div>
+        </div>
+        <div class="ic">
+          <div class="ic-label">Agent en charge</div>
+          <div class="ic-value">${agentNom}</div>
+        </div>
+      </div>
+      ${demande.description ? `
+      <div class="desc-box">
+        <div class="desc-lbl">Motif de la demande</div>
+        <p>« ${demande.description} »</p>
+      </div>` : ''}
+    </div>
+
+    <!-- Citoyen -->
+    <div class="section">
+      <div class="sec-hd"><span class="sec-title">Identité du demandeur</span><div class="sec-rule"></div></div>
+      <div class="info-grid">
+        <div class="ic">
+          <div class="ic-label">Nom complet</div>
+          <div class="ic-value">${citizenName || '—'}</div>
+        </div>
+        <div class="ic">
+          <div class="ic-label">Adresse email</div>
+          <div class="ic-value">${auth?.user?.email ?? '—'}</div>
+        </div>
+        ${auth?.user?.telephone ? `
+        <div class="ic" style="border-bottom:none; border-right:none; grid-column:span 2;">
+          <div class="ic-label">Téléphone</div>
+          <div class="ic-value">${auth.user.telephone}</div>
+        </div>` : ''}
+      </div>
+    </div>
+
+    <!-- Timeline + QR -->
+    ${timelineHtml ? `
+    <div class="section">
+      <div class="sec-hd"><span class="sec-title">Historique du traitement</span><div class="sec-rule"></div></div>
+      <div class="two-col">
+        <div class="tl">${timelineHtml}</div>
+        <div class="qr-panel">
+          <img src="${qrUrl}" width="108" height="108" alt="QR Code"/>
+          <div class="qr-label">Scanner pour<br/>vérifier</div>
+        </div>
+      </div>
+    </div>` : `
+    <div class="section" style="text-align:right;">
+      <div class="qr-panel" style="display:inline-flex;flex-direction:column;align-items:center;padding:16px 12px;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+        <img src="${qrUrl}" width="108" height="108" alt="QR Code" style="border-radius:6px;display:block;"/>
+        <div class="qr-label">Scanner pour vérifier</div>
+      </div>
+    </div>`}
+
+    <!-- Signatures -->
+    <div class="sigs">
+      <div class="sig">
+        <div class="sig-line"></div>
+        <div class="sig-name">${citizenName || 'Le demandeur'}</div>
+        <div class="sig-role">Signature du citoyen</div>
+      </div>
+      <div class="sig" style="text-align:right;">
+        <div class="sig-line"></div>
+        <div class="sig-name">${agentNom}</div>
+        <div class="sig-role">Signature &amp; cachet de l'agent</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="foot">
+    <div>
+      <div class="foot-disc">
+        <strong>Document non officiel.</strong> Ce récépissé atteste uniquement du dépôt de votre dossier
+        auprès des services municipaux. Il ne constitue pas un acte administratif. Le document définitif
+        vous sera délivré après validation par les agents habilités de la Mairie.
+      </div>
+      <div class="foot-uuid">Réf. : ${demande.uuid}</div>
+    </div>
+    <div class="foot-stamp">Cachet<br/>Mairie</div>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+        toast.info('Préparation de l\'impression…');
+        const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const win  = window.open(url, '_blank', 'width=960,height=780');
+        win.onload = () => {
+            setTimeout(() => {
+                win.print();
+                URL.revokeObjectURL(url);
+            }, 400);
+        };
     };
 
     const handleGenerateDocument = async () => {

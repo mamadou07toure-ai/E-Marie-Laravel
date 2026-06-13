@@ -12,6 +12,7 @@ const STATUT_CONFIG = {
     en_attente:       { label: 'En attente',       color: 'text-slate-600',   bg: 'bg-slate-50',    dot: 'bg-slate-400',   border: 'border-slate-200' },
     rejetee:          { label: 'Rejeté',           color: 'text-red-600',     bg: 'bg-red-50',      dot: 'bg-red-500',     border: 'border-red-200' },
     document_manquant:{ label: 'Pièce manquante',  color: 'text-amber-600',   bg: 'bg-amber-50',    dot: 'bg-amber-500',   border: 'border-amber-200' },
+    remise:           { label: 'Remis',            color: 'text-violet-600',  bg: 'bg-violet-50',   dot: 'bg-violet-500',  border: 'border-violet-200' },
 };
 
 function StatutBadge({ statut }) {

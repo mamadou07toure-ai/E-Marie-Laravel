@@ -236,12 +236,9 @@ class AgentController extends Controller
     {
         $demande = Demande::where('uuid', $uuid)->firstOrFail();
 
-        if ($demande->statut->value !== 'validee') {
+        $statut = is_object($demande->statut) ? $demande->statut->value : $demande->statut;
+        if ($statut !== 'validee') {
             return response()->json(['message' => 'Seul un dossier validé peut être remis.'], 422);
-        }
-
-        if (!$demande->is_physical_pickup) {
-            return response()->json(['message' => 'Ce dossier n\'est pas prévu pour un retrait physique.'], 422);
         }
 
         $demande->update([

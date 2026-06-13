@@ -79,7 +79,7 @@ return [
     */
 
     'middleware' => [
-        'authenticate_session' => AuthenticateSession::class,
+        'authenticate_session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
         'encrypt_cookies' => EncryptCookies::class,
         'validate_csrf_token' => ValidateCsrfToken::class,
     ],

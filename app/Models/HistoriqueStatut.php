@@ -8,7 +8,8 @@ class HistoriqueStatut extends Model
 {
     protected $table = 'historique_statuts';
 
-    public $timestamps = false;
+    public $timestamps = true;
+    const UPDATED_AT = null;
 
     protected $fillable = [
         'demande_id',

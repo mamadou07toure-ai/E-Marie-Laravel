@@ -159,20 +159,37 @@ export default function Register() {
                             {errors.telephone && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.telephone}</p>}
                         </div>
 
-                        <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Mot de passe</label>
-                            <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                <input 
-                                    type="password" 
-                                    value={data.password}
-                                    onChange={e => setData('password', e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-medium"
-                                    required
-                                />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Mot de passe</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="password"
+                                        value={data.password}
+                                        onChange={e => setData('password', e.target.value)}
+                                        placeholder="••••••••"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-medium"
+                                        required
+                                    />
+                                </div>
+                                {errors.password && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.password}</p>}
                             </div>
-                            {errors.password && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.password}</p>}
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 ml-1">Confirmation</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input
+                                        type="password"
+                                        value={data.password_confirmation}
+                                        onChange={e => setData('password_confirmation', e.target.value)}
+                                        placeholder="••••••••"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none font-medium"
+                                        required
+                                    />
+                                </div>
+                                {errors.password_confirmation && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.password_confirmation}</p>}
+                            </div>
                         </div>
 
                         <div className="flex items-start gap-3 pt-2">

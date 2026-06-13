@@ -48,15 +48,17 @@ export default function CitizenLayout({ children, title }) {
     const unread = notifs.filter(n => !n.lu).length;
     const [unreadMessages, setUnreadMessages] = useState(0);
 
-    // Polling toutes les 30 secondes
+    // Polling toutes les 30 secondes — délai initial de 3s pour laisser la session se stabiliser
     useEffect(() => {
-        const interval = setInterval(async () => {
+        const fetchNotifs = async () => {
             try {
                 const res = await axios.get('/api/v1/notifications');
                 setNotifs(res.data);
             } catch {}
-        }, 30000);
-        return () => clearInterval(interval);
+        };
+        const initialTimeout = setTimeout(fetchNotifs, 3000);
+        const interval = setInterval(fetchNotifs, 30000);
+        return () => { clearTimeout(initialTimeout); clearInterval(interval); };
     }, []);
 
     const markRead = async (id) => {
@@ -77,9 +79,10 @@ export default function CitizenLayout({ children, title }) {
                 setUnreadMessages(total);
             } catch {}
         };
-        fetchUnread();
+        // Délai initial de 3s pour éviter la race condition avec la session
+        const initialTimeout = setTimeout(fetchUnread, 3000);
         const interval = setInterval(fetchUnread, 30000);
-        return () => clearInterval(interval);
+        return () => { clearTimeout(initialTimeout); clearInterval(interval); };
     }, []);
 
     const handleSearch = (e) => {

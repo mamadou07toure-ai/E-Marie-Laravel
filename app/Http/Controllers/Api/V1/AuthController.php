@@ -28,6 +28,7 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        // Auth::login() régénère déjà la session — pas besoin de le refaire
 
         if ($request->header('X-Inertia')) {
             return redirect()->route('citoyen.dashboard');
@@ -55,19 +56,30 @@ class AuthController extends Controller
         }
 
         $request->clearAttempts();
-        $request->session()->regenerate();
 
-        $user = User::where('email', $request->email)->firstOrFail();
+        $user = Auth::user();
 
         if (!$user->is_active) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
+            $request->session()->regenerateToken();
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'email' => 'Votre compte est désactivé. Contactez l\'administrateur.',
             ]);
         }
 
+        // Régénérer la session après login (prévient la fixation de session)
+        $request->session()->regenerate();
+
         $user->update(['last_login_at' => now()]);
+
+        // CRITIQUE : forcer l'écriture immédiate de la session en base de données.
+        // Sans cela, avec le driver "database", la session est seulement en mémoire
+        // au moment où le navigateur reçoit la réponse. Si l'utilisateur clique
+        // immédiatement sur un lien, la requête suivante ne trouve pas la session
+        // en DB et provoque une déconnexion silencieuse (visible uniquement au
+        // premier login après démarrage du serveur).
+        $request->session()->save();
 
         // Rediriger si c'est une requête Inertia (Web)
         if ($request->header('X-Inertia')) {
@@ -91,8 +103,17 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->tokens()->delete();
+        // Supprimer tous les tokens Sanctum de l'utilisateur
+        if ($request->user()) {
+            $request->user()->tokens()->delete();
+        }
+
+        // Déconnecter de la guard web (session)
         Auth::guard('web')->logout();
+
+        // Invalider la session et régénérer le token CSRF
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         if ($request->header('X-Inertia')) {
             return redirect('/');
