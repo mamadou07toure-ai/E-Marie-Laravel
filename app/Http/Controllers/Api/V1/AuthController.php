@@ -27,8 +27,30 @@ class AuthController extends Controller
             'is_active' => true,
         ]);
 
+        \App\Models\Notification::create([
+            'user_id'    => $user->id,
+            'demande_id' => null,
+            'type'       => 'systeme',
+            'message'    => "Bienvenue {$user->prenom} ! Votre compte citoyen e-Mairie a été créé avec succès. Vous pouvez dès maintenant soumettre vos demandes en ligne.",
+            'lu'         => false,
+            'created_at' => now(),
+        ]);
+
+        $admins = User::where('role', RoleEnum::ADMINISTRATEUR->value)->pluck('id');
+        $now = now();
+        $adminNotifs = $admins->map(fn($adminId) => [
+            'user_id'    => $adminId,
+            'demande_id' => null,
+            'type'       => 'systeme',
+            'message'    => "Nouveau citoyen inscrit : {$user->prenom} {$user->nom} ({$user->email}).",
+            'lu'         => false,
+            'created_at' => $now,
+        ])->all();
+        if (!empty($adminNotifs)) {
+            \App\Models\Notification::insert($adminNotifs);
+        }
+
         Auth::login($user);
-        // Auth::login() régénère déjà la session — pas besoin de le refaire
 
         if ($request->header('X-Inertia')) {
             return redirect()->route('citoyen.dashboard');

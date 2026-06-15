@@ -126,7 +126,13 @@ class AdminController extends Controller
 
     public function users(Request $request)
     {
-        $query = User::whereIn('role', [RoleEnum::AGENT->value, RoleEnum::ADMINISTRATEUR->value]);
+        $tab = $request->input('tab', 'personnel');
+
+        if ($tab === 'citoyens') {
+            $query = User::where('role', RoleEnum::CITOYEN->value);
+        } else {
+            $query = User::whereIn('role', [RoleEnum::AGENT->value, RoleEnum::ADMINISTRATEUR->value]);
+        }
 
         if ($request->search) {
             $query->where(function($q) use ($request) {
@@ -138,9 +144,15 @@ class AdminController extends Controller
 
         $users = $query->orderBy('nom')->get();
 
+        $counts = [
+            'personnel' => User::whereIn('role', [RoleEnum::AGENT->value, RoleEnum::ADMINISTRATEUR->value])->count(),
+            'citoyens'  => User::where('role', RoleEnum::CITOYEN->value)->count(),
+        ];
+
         return Inertia::render('Admin/Users/Index', [
-            'users' => $users,
-            'filters' => $request->only(['search'])
+            'users'   => $users,
+            'filters' => $request->only(['search', 'tab']),
+            'counts'  => $counts,
         ]);
     }
 

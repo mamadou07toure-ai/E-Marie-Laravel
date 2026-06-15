@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { 
-    Bell, 
-    Clock, 
-    AlertCircle, 
+import {
+    Bell,
     Trash2,
     UserPlus,
     Check,
@@ -12,7 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function Notifications({ auth, db_notifications }) {
+export default function Notifications({ db_notifications }) {
     // On utilise les notifications réelles de la DB, tout en gardant l'état local pour les actions UI
     const [notifications, setNotifications] = useState(db_notifications || []);
 

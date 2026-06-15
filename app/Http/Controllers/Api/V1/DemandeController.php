@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\RoleEnum;
 use App\Enums\StatutDemandeEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Demande\StoreDemandeRequest;
 use App\Models\Demande;
+use App\Models\Notification;
 use App\Models\TypeDemande;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class DemandeController extends Controller
@@ -88,6 +91,21 @@ class DemandeController extends Controller
             'created_at' => now(),
         ]);
 
+        $citoyen = $request->user();
+        $now = now();
+        $adminIds = User::where('role', RoleEnum::ADMINISTRATEUR->value)->pluck('id');
+        $adminNotifs = $adminIds->map(fn($adminId) => [
+            'user_id'    => $adminId,
+            'demande_id' => $demande->id,
+            'type'       => 'dossier',
+            'message'    => "Nouvelle demande {$demande->numero_dossier} ({$typeDemande->libelle}) soumise par {$citoyen->prenom} {$citoyen->nom}.",
+            'lu'         => false,
+            'created_at' => $now,
+        ])->all();
+        if (!empty($adminNotifs)) {
+            Notification::insert($adminNotifs);
+        }
+
         return response()->json([
             'message' => 'Votre demande officielle a été enregistrée avec succès.',
             'numero_dossier' => $demande->numero_dossier,
@@ -129,6 +147,12 @@ class DemandeController extends Controller
             ->where('user_id', $request->user()->id)
             ->firstOrFail();
 
+        $ancienStatut = is_object($demande->statut) ? $demande->statut->value : $demande->statut;
+
+        if ($ancienStatut !== 'document_manquant') {
+            return response()->json(['message' => 'Ce dossier n\'accepte plus de pièces justificatives.'], 422);
+        }
+
         $file = $request->file('document');
         $path = $file->store('documents/' . $demande->numero_dossier, 'local');
 
@@ -142,8 +166,6 @@ class DemandeController extends Controller
             'is_validated' => false,
             'created_at' => now(),
         ]);
-
-        $ancienStatut = is_object($demande->statut) ? $demande->statut->value : $demande->statut;
 
         if ($ancienStatut === 'document_manquant') {
             $demande->update([

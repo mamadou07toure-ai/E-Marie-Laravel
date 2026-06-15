@@ -234,8 +234,225 @@ export default function Show({ uuid, has_active_template = false }) {
     };
 
     const handlePrint = () => {
+        if (!demande) return;
+
+        const statutMap = {
+            en_attente:        { label: 'En attente',        bg: '#f1f5f9', color: '#475569' },
+            en_cours:          { label: 'En cours',          bg: '#dbeafe', color: '#1d4ed8' },
+            document_manquant: { label: 'Document manquant', bg: '#fef9c3', color: '#b45309' },
+            validee:           { label: 'Validé',            bg: '#dcfce7', color: '#15803d' },
+            rejetee:           { label: 'Rejeté',            bg: '#fee2e2', color: '#dc2626' },
+            remise:            { label: 'Remis au guichet',  bg: '#ede9fe', color: '#7c3aed' },
+        };
+        const statutInfo = statutMap[demande.statut] ?? { label: demande.statut, bg: '#f1f5f9', color: '#475569' };
+        const agentNom  = demande.agent ? `${demande.agent.prenom} ${demande.agent.nom}` : 'Non assigné';
+        const citizenNom = demande.user ? `${demande.user.prenom} ${demande.user.nom}` : '—';
+        const emitDate  = new Date().toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const depotDate = new Date(demande.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        // Données formulaire selon le type
+        const buildFormRows = () => {
+            const fd = (label, val) => val ? `<div class="fd-item"><div class="fd-lbl">${label}</div><div class="fd-val">${val}</div></div>` : '';
+            const fdFull = (label, val) => val ? `<div class="fd-item fd-full"><div class="fd-lbl">${label}</div><div class="fd-val">${val}</div></div>` : '';
+            const fmtD = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
+
+            if (demande.type_demande?.code === 'ACTE_NAISSANCE' && demande.naissance) {
+                const n = demande.naissance;
+                return fd('Nom', n.nom) + fd('Prénom(s)', n.prenoms) + fd('Date de naissance', fmtD(n.date_naissance)) + fd('Lieu de naissance', n.lieu_naissance) + fd('Genre', n.genre === 'M' ? 'Masculin' : 'Féminin') + fd('Motif', n.motif) + fd('Père', `${n.prenom_pere || ''} ${n.nom_pere || ''}`.trim()) + fd('Mère', `${n.prenom_mere || ''} ${n.nom_mere || ''}`.trim());
+            }
+            if (demande.type_demande?.code === 'CERTIFICAT_RESIDENCE' && demande.residence) {
+                const r = demande.residence;
+                return fd('Nom & Prénoms', `${r.prenoms || ''} ${r.nom || ''}`.trim()) + fd('Quartier / Commune', r.quartier_commune) + fd('Durée de résidence', r.duree_residence) + fdFull('Adresse complète', r.adresse_complete);
+            }
+            if (demande.type_demande?.code === 'CERTIFICAT_MARIAGE' && demande.mariage) {
+                const m = demande.mariage;
+                return fd('Époux', `${m.prenom_epoux || ''} ${m.nom_epoux || ''}`.trim()) + fd('Épouse', `${m.prenom_epouse || ''} ${m.nom_epouse || ''}`.trim()) + fd('Date du mariage', fmtD(m.date_mariage)) + fd('Lieu du mariage', m.lieu_mariage);
+            }
+            if (demande.type_demande?.code === 'LEGALISATION_DOCUMENT' && demande.legalisation) {
+                const l = demande.legalisation;
+                return fd('Type de document', l.type_document) + fd('Pays de destination', l.pays_destination) + fd('Nombre de copies', l.nombre_copies) + fd('Usage prévu', l.usage_prevu) + fdFull('Description', l.description_document);
+            }
+            if (demande.type_demande?.code === 'AUTORISATION_ADMINISTRATIVE' && demande.autorisation) {
+                const a = demande.autorisation;
+                return fd('Nature de l\'autorisation', a.nature_autorisation) + fd('Adresse', a.adresse_activite) + fd('Date de début', fmtD(a.date_debut)) + fd('Date de fin', fmtD(a.date_fin)) + fd('Nb personnes', a.nombre_personnes) + fdFull('Description', a.description_detaillee);
+            }
+            const ch = demande.changement_adresse || demande.changementAdresse;
+            if (demande.type_demande?.code === 'CHANGEMENT_ADRESSE' && ch) {
+                return fd('Ancienne adresse', ch.ancienne_adresse) + fd('Nouvelle adresse', ch.nouvelle_adresse) + fd('Date d\'installation', fmtD(ch.date_installation)) + fd('Nouveau quartier', ch.quartier_commune_nouveau) + fdFull('Motif', ch.motif_changement);
+            }
+            return '';
+        };
+        const formRows = buildFormRows();
+
+        // Timeline
+        const histItems = demande.historique_statuts ?? [];
+        const tlDot = { validee: 'done', rejetee: 'error', remise: 'done', document_manquant: 'warn', en_cours: 'active' };
+        const tlLabel = { en_attente: 'Demande déposée', en_cours: 'Prise en charge', document_manquant: 'Document manquant', validee: 'Dossier validé', rejetee: 'Demande rejetée', remise: 'Document remis' };
+        const timelineHtml = histItems.map((h, i) => {
+            const dot = i === histItems.length - 1 ? (tlDot[h.nouveau_statut] ?? '') : 'done';
+            const dateStr = new Date(h.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const byUser = h.user ? ` — ${h.user.prenom} ${h.user.nom}` : '';
+            return `<div class="tl-item"><div class="tl-dot ${dot}"></div><div class="tl-content"><div class="tl-row"><span class="tl-label">${tlLabel[h.nouveau_statut] ?? h.nouveau_statut}</span><span class="tl-date">${dateStr}${byUser}</span></div>${h.commentaire ? `<div class="tl-comment">${h.commentaire}</div>` : ''}</div></div>`;
+        }).join('');
+
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=1e3a8a&bgcolor=ffffff&data=${encodeURIComponent(window.location.origin + '/verify/demandes/' + demande.uuid)}`;
+
+        const alertHtml = demande.statut === 'rejetee' && demande.motif_rejet
+            ? `<div class="alert alert-error"><strong>Motif de rejet :</strong> ${demande.motif_rejet}</div>`
+            : demande.statut === 'document_manquant' && demande.piece_manquante
+            ? `<div class="alert alert-warn"><strong>Pièce manquante requise :</strong> ${demande.piece_manquante}</div>`
+            : '';
+
+        const notesHtml = demande.notes_internes
+            ? `<div class="section"><div class="sec-hd"><span class="sec-title">Notes internes (confidentielles)</span><div class="sec-rule"></div></div><div class="notes-box">${demande.notes_internes.replace(/\n/g, '<br/>')}</div></div>`
+            : '';
+
+        const docsHtml = demande.documents?.length
+            ? demande.documents.map(d => `<div class="doc-item"><span class="doc-icon">📎</span><span class="doc-name">${d.nom_original}</span></div>`).join('')
+            : '<p style="color:#94a3b8;font-style:italic;font-size:10px;">Aucun document joint.</p>';
+
+        const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"/>
+<title>Fiche Agent — ${demande.numero_dossier}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#eef2f7;color:#0f172a;font-size:11px;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:794px;min-height:1122px;margin:24px auto;background:#fff;border-radius:4px;box-shadow:0 4px 32px rgba(0,0,0,.10);position:relative;overflow:hidden}
+.stripe{height:7px;background:linear-gradient(90deg,#1e3a8a 0%,#2563eb 55%,#38bdf8 100%)}
+.hd{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 36px 18px;border-bottom:1px solid #e2e8f0}
+.hd-brand{display:flex;align-items:center;gap:14px}
+.hd-logo{width:54px;height:54px;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:900;letter-spacing:-1px;flex-shrink:0;box-shadow:0 4px 12px rgba(37,99,235,.35)}
+.hd-brand-text h1{font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-.5px}
+.hd-brand-text p{font-size:9px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;margin-top:3px}
+.hd-meta{text-align:right}
+.hd-meta .doc-type{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;color:#2563eb;margin-bottom:5px}
+.hd-meta .doc-num{font-size:22px;font-weight:900;color:#0f172a;letter-spacing:-1.5px;line-height:1;font-variant-numeric:tabular-nums}
+.hd-meta .doc-emit{font-size:9px;color:#94a3b8;margin-top:5px}
+.title-band{background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:13px 36px;display:flex;align-items:center;justify-content:space-between}
+.title-band h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;color:#1e293b}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;background:${statutInfo.bg};color:${statutInfo.color}}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;display:block}
+.body{padding:26px 36px}
+.section{margin-bottom:22px}
+.sec-hd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sec-title{font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;color:#94a3b8;white-space:nowrap}
+.sec-rule{flex:1;height:1px;background:#e2e8f0}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+.ic{padding:12px 16px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+.ic:nth-child(even){border-right:none}
+.ic:nth-last-child(-n+2){border-bottom:none}
+.ic-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#94a3b8;margin-bottom:3px}
+.ic-value{font-size:12px;font-weight:600;color:#0f172a}
+.fd-grid{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #e2e8f0;border-radius:10px;overflow:hidden}
+.fd-item{padding:10px 14px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+.fd-item:nth-child(3n){border-right:none}
+.fd-full{grid-column:span 3;border-right:none}
+.fd-lbl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:3px}
+.fd-val{font-size:11px;font-weight:600;color:#0f172a}
+.two-col{display:grid;grid-template-columns:1fr 140px;gap:22px;align-items:start}
+.tl{padding-left:18px;position:relative}
+.tl::before{content:'';position:absolute;left:5px;top:7px;bottom:7px;width:1.5px;background:#e2e8f0}
+.tl-item{position:relative;padding:0 0 14px 18px}
+.tl-item:last-child{padding-bottom:0}
+.tl-dot{position:absolute;left:-13px;top:3px;width:11px;height:11px;border-radius:50%;background:#cbd5e1;border:2px solid #fff;box-shadow:0 0 0 1.5px #cbd5e1}
+.tl-dot.done{background:#22c55e;box-shadow:0 0 0 1.5px #22c55e}
+.tl-dot.active{background:#3b82f6;box-shadow:0 0 0 1.5px #3b82f6}
+.tl-dot.error{background:#ef4444;box-shadow:0 0 0 1.5px #ef4444}
+.tl-dot.warn{background:#f59e0b;box-shadow:0 0 0 1.5px #f59e0b}
+.tl-row{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px}
+.tl-label{font-size:11px;font-weight:700;color:#0f172a}
+.tl-date{font-size:9px;color:#94a3b8;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tl-comment{font-size:10px;color:#64748b;font-style:italic;margin-top:3px}
+.qr-panel{display:flex;flex-direction:column;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 10px;gap:6px}
+.qr-panel img{border-radius:6px;display:block}
+.qr-label{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#94a3b8;text-align:center}
+.alert{border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:10px;font-weight:600}
+.alert-error{background:#fee2e2;border-left:3px solid #dc2626;color:#991b1b}
+.alert-warn{background:#fef9c3;border-left:3px solid #f59e0b;color:#92400e}
+.notes-box{background:#fafafa;border:1px solid #e2e8f0;border-left:3px solid #94a3b8;border-radius:8px;padding:12px 16px;font-size:10px;color:#374151;line-height:1.8;white-space:pre-wrap}
+.doc-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f8fafc;border-radius:8px;margin-bottom:4px;border:1px solid #e2e8f0}
+.doc-icon{font-size:14px}
+.doc-name{font-size:10px;font-weight:600;color:#374151}
+.conf-strip{background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:8px 14px;text-align:center;font-size:8px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:2px;margin-bottom:18px}
+.foot{margin-top:22px;padding:16px 36px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.foot-disc{font-size:8.5px;color:#94a3b8;line-height:1.8;max-width:440px}
+.foot-uuid{margin-top:5px;font-family:'Courier New',monospace;font-size:7.5px;color:#cbd5e1;letter-spacing:.3px;word-break:break-all}
+.sigs{display:flex;justify-content:space-between;margin-top:24px;padding-top:18px;border-top:1px dashed #e2e8f0}
+.sig{width:190px}
+.sig-line{height:40px;border-bottom:1.5px solid #1e293b;margin-bottom:6px}
+.sig-name{font-size:10px;font-weight:700;color:#374151}
+.sig-role{font-size:8.5px;color:#94a3b8}
+@media print{body{background:#fff}.page{margin:0;border-radius:0;box-shadow:none;width:100%;min-height:100vh}}
+</style></head>
+<body><div class="page">
+<div class="stripe"></div>
+<div class="hd">
+  <div class="hd-brand">
+    <div class="hd-logo">SE</div>
+    <div class="hd-brand-text">
+      <h1>Smart e-Mairie</h1>
+      <p>République de Guinée &nbsp;·&nbsp; Service de l'État Civil</p>
+    </div>
+  </div>
+  <div class="hd-meta">
+    <p class="doc-type">Fiche de traitement — Usage interne</p>
+    <p class="doc-num">${demande.numero_dossier}</p>
+    <p class="doc-emit">Édité le ${emitDate}</p>
+  </div>
+</div>
+<div class="title-band">
+  <h2>Rapport de dossier — Espace Agent</h2>
+  <span class="badge">${statutInfo.label}</span>
+</div>
+<div class="body">
+  <div class="conf-strip">⚠ Document confidentiel — Réservé à l'usage interne des agents de la Mairie</div>
+  ${alertHtml}
+  <div class="section">
+    <div class="sec-hd"><span class="sec-title">Informations du dossier</span><div class="sec-rule"></div></div>
+    <div class="info-grid">
+      <div class="ic"><div class="ic-label">Type de service</div><div class="ic-value">${demande.type_demande?.libelle ?? '—'}</div></div>
+      <div class="ic"><div class="ic-label">Date de dépôt</div><div class="ic-value">${depotDate}</div></div>
+      <div class="ic"><div class="ic-label">Priorité</div><div class="ic-value">${demande.priorite ?? 'Normale'}</div></div>
+      <div class="ic"><div class="ic-label">Agent en charge</div><div class="ic-value">${agentNom}</div></div>
+    </div>
+    ${demande.description ? `<div style="margin-top:12px;background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #2563eb;border-radius:8px;padding:10px 14px;"><div style="font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#64748b;margin-bottom:4px;">Motif de la demande</div><p style="font-size:11px;color:#374151;font-style:italic;">« ${demande.description} »</p></div>` : ''}
+  </div>
+  <div class="section">
+    <div class="sec-hd"><span class="sec-title">Identité du demandeur</span><div class="sec-rule"></div></div>
+    <div class="info-grid">
+      <div class="ic"><div class="ic-label">Nom complet</div><div class="ic-value">${citizenNom}</div></div>
+      <div class="ic"><div class="ic-label">Email</div><div class="ic-value">${demande.user?.email ?? '—'}</div></div>
+      ${demande.user?.telephone ? `<div class="ic" style="border-bottom:none;border-right:none;grid-column:span 2"><div class="ic-label">Téléphone</div><div class="ic-value">${demande.user.telephone}</div></div>` : ''}
+    </div>
+  </div>
+  ${formRows ? `<div class="section"><div class="sec-hd"><span class="sec-title">Données spécifiques au formulaire</span><div class="sec-rule"></div></div><div class="fd-grid">${formRows}</div></div>` : ''}
+  <div class="section">
+    <div class="sec-hd"><span class="sec-title">Pièces justificatives soumises</span><div class="sec-rule"></div></div>
+    ${docsHtml}
+  </div>
+  ${timelineHtml ? `<div class="section"><div class="sec-hd"><span class="sec-title">Historique du traitement</span><div class="sec-rule"></div></div><div class="two-col"><div class="tl">${timelineHtml}</div><div class="qr-panel"><img src="${qrUrl}" width="108" height="108" alt="QR"/><div class="qr-label">Vérification<br/>sécurisée</div></div></div></div>` : ''}
+  ${notesHtml}
+  <div class="sigs">
+    <div class="sig"><div class="sig-line"></div><div class="sig-name">${agentNom}</div><div class="sig-role">Signature de l'agent traitant</div></div>
+    <div class="sig" style="text-align:right"><div class="sig-line"></div><div class="sig-name">Chef de service</div><div class="sig-role">Visa et cachet</div></div>
+  </div>
+</div>
+<div class="foot">
+  <div>
+    <div class="foot-disc"><strong>Document interne.</strong> Cette fiche est destinée exclusivement à l'usage des agents habilités de la Mairie. Toute divulgation à des tiers est interdite conformément au secret professionnel.</div>
+    <div class="foot-uuid">UUID : ${demande.uuid}</div>
+  </div>
+</div>
+</div></body></html>`;
+
         toast.info("Préparation du document pour l'impression...");
-        setTimeout(() => window.print(), 800);
+        const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const win  = window.open(url, '_blank', 'width=960,height=780');
+        win.onload = () => {
+            setTimeout(() => { win.print(); URL.revokeObjectURL(url); }, 400);
+        };
     };
 
     const handleGenerateDocument = async () => {

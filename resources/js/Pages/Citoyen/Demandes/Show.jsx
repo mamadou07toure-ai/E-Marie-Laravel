@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import CitizenLayout from '@/Layouts/CitizenLayout';
 import axios from 'axios';
@@ -21,7 +21,8 @@ import {
     ExternalLink,
     Send,
     Loader2,
-    X
+    X,
+    UploadCloud
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 
@@ -34,14 +35,24 @@ export default function Show({ auth, demande, has_active_template = false }) {
     // RDV States
     const [rdv, setRdv]                       = useState(null);
     const [availableDays, setAvailableDays]   = useState([]);
-    const [selectedDay, setSelectedDay]       = useState(null); // The day object
-    const [selectedSlot, setSelectedSlot]     = useState(null); // The slot object
+    const [selectedDay, setSelectedDay]       = useState(null);
+    const [selectedSlot, setSelectedSlot]     = useState(null);
     const [rdvLoading, setRdvLoading]         = useState(false);
-    const [rdvNotes, setRdvNotes]             = useState('');
+    const [rdvNotes]                          = useState('');
     const [generating, setGenerating]         = useState(false);
+
+    // Upload pièce manquante
+    const [uploadFile, setUploadFile]         = useState(null);
+    const [uploading, setUploading]           = useState(false);
+    const [uploadSuccess, setUploadSuccess]   = useState(false);
+    const reloadTimerRef                      = useRef(null);
+
+    useEffect(() => () => clearTimeout(reloadTimerRef.current), []);
 
     useEffect(() => {
         fetchRdv();
+        setUploadFile(null);
+        setUploadSuccess(false);
     }, [demande]);
 
     useEffect(() => {
@@ -536,6 +547,27 @@ export default function Show({ auth, demande, has_active_template = false }) {
         setShowChatDrawer(true);
     };
 
+    const handleFileChange = (e) => {
+        setUploadFile(e.target.files[0] || null);
+    };
+
+    const handleUploadDocument = async () => {
+        if (!uploadFile || uploading) return;
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('document', uploadFile);
+            await axios.post(`/api/v1/demandes/${demande.uuid}/documents`, formData);
+            setUploadSuccess(true);
+            toast.success("Document soumis ! Votre dossier est de nouveau en cours de traitement.");
+            reloadTimerRef.current = setTimeout(() => router.reload({ only: ['demande'] }), 1500);
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Erreur lors de l'envoi du document.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
     if (!demande) return null;
 
     return (
@@ -561,18 +593,74 @@ export default function Show({ auth, demande, has_active_template = false }) {
                     Retour à la liste
                 </Link>
 
-                {/* Bandeau pièce manquante — pleine largeur */}
-                {demande.statut === 'document_manquant' && demande.piece_manquante && (
-                    <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-[2rem] p-6 flex items-start gap-4">
-                        <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-                            <AlertTriangle size={20} />
+                {/* Bandeau motif rejet */}
+                {demande.statut === 'rejetee' && demande.motif_rejet && (
+                    <div className="mb-6 bg-rose-50 border-2 border-rose-300 rounded-[2rem] p-6 flex items-start gap-4">
+                        <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
+                            <AlertCircle size={20} />
                         </div>
                         <div>
-                            <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Action requise — Document manquant</p>
-                            <p className="text-sm font-bold text-amber-900">{demande.piece_manquante}</p>
-                            <p className="text-[10px] text-amber-600 font-bold mt-2">
-                                Merci de fournir ce document à votre agent ou via la messagerie pour que votre dossier soit traité.
+                            <p className="text-[10px] font-black text-rose-700 uppercase tracking-widest mb-1">Dossier Rejeté — Motif du refus</p>
+                            <p className="text-sm font-bold text-rose-900">{demande.motif_rejet}</p>
+                            <p className="text-[10px] text-rose-600 font-bold mt-2">
+                                Votre demande a été refusée. Vous pouvez contacter la mairie ou soumettre une nouvelle demande.
                             </p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Bandeau pièce manquante — avec upload intégré */}
+                {demande.statut === 'document_manquant' && demande.piece_manquante && (
+                    <div className="mb-6 bg-amber-50 border-2 border-amber-300 rounded-[2rem] p-6">
+                        <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+                                <AlertTriangle size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Action requise — Document manquant</p>
+                                <p className="text-sm font-bold text-amber-900">{demande.piece_manquante}</p>
+                            </div>
+                        </div>
+
+                        {/* Zone d'upload */}
+                        <div className="mt-5 pt-5 border-t border-amber-200">
+                            {uploadSuccess ? (
+                                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3">
+                                    <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                                    <p className="text-[11px] font-black text-emerald-700">Document soumis ! Votre dossier est de nouveau en cours de traitement.</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col sm:flex-row items-start gap-3">
+                                    <div className="flex-1 flex flex-col gap-2">
+                                        <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Soumettre le document manquant</span>
+                                        <label className={`flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                                            uploadFile ? 'border-amber-500 bg-amber-100' : 'border-amber-300 bg-white hover:border-amber-400 hover:bg-amber-50'
+                                        }`}>
+                                            <UploadCloud size={18} className="text-amber-600 shrink-0" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[11px] font-bold text-amber-800 truncate">
+                                                    {uploadFile ? uploadFile.name : 'Cliquer pour choisir un fichier'}
+                                                </p>
+                                                <p className="text-[9px] text-amber-600">PDF, JPG, PNG — max 10 Mo</p>
+                                            </div>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept=".pdf,.jpg,.jpeg,.png"
+                                                onChange={handleFileChange}
+                                            />
+                                        </label>
+                                    </div>
+                                    <button
+                                        onClick={handleUploadDocument}
+                                        disabled={!uploadFile || uploading}
+                                        className="sm:mt-7 px-5 py-3 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 shrink-0 shadow-lg shadow-amber-600/20"
+                                    >
+                                        {uploading ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} />}
+                                        Soumettre
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

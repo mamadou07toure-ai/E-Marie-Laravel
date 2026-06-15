@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import axios from 'axios';
 import {
     LayoutDashboard, Users, BarChart3, Settings,
-    LogOut, Menu, Bell, ShieldCheck, Monitor, FileText, FileImage
+    LogOut, Menu, Bell, ShieldCheck, Monitor, FileText, FileImage,
+    Check, Clock
 } from 'lucide-react';
 import { Toaster } from 'sonner';
+import { formatRelativeTime } from '@/utils/time';
 
 const NAV = [
     { name: 'Tableau de bord',   href: '/admin/tableau-de-bord', icon: LayoutDashboard },
@@ -17,11 +20,36 @@ const NAV = [
 ];
 
 export default function AdminLayout({ children, title }) {
-    const { auth } = usePage().props;
+    const { auth, notifications: initialNotifs = [] } = usePage().props;
     const currentUrl = usePage().url;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [showNotifs, setShowNotifs]   = useState(false);
+    const [notifs, setNotifs]           = useState(initialNotifs);
 
+    const unread   = notifs.filter(n => !n.lu).length;
     const isActive = (href) => currentUrl === href || currentUrl.startsWith(href);
+
+    useEffect(() => {
+        const fetchNotifs = async () => {
+            try {
+                const res = await axios.get('/api/v1/notifications');
+                setNotifs(res.data);
+            } catch {}
+        };
+        const initialTimeout = setTimeout(fetchNotifs, 3000);
+        const interval = setInterval(fetchNotifs, 30000);
+        return () => { clearTimeout(initialTimeout); clearInterval(interval); };
+    }, []);
+
+    const markRead = async (id) => {
+        setNotifs(prev => prev.map(n => n.id === id ? { ...n, lu: true } : n));
+        await axios.patch(`/api/v1/notifications/${id}/lu`, {}).catch(() => {});
+    };
+
+    const markAllRead = async () => {
+        setNotifs(prev => prev.map(n => ({ ...n, lu: true })));
+        await axios.post('/api/v1/notifications/mark-all-read').catch(() => {});
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans antialiased">
@@ -103,13 +131,61 @@ export default function AdminLayout({ children, title }) {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Link
-                            href="/admin/notifications"
-                            className={`relative p-2.5 rounded-xl transition-luxury ${isActive('/admin/notifications') ? 'bg-mairie-cyan/10 text-mairie-cyan border border-mairie-cyan/15' : 'text-slate-500 hover:bg-slate-50'}`}
-                        >
-                            <Bell size={18} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
-                        </Link>
+                        {/* Notifications */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowNotifs(!showNotifs)}
+                                className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                            >
+                                <Bell size={20} />
+                                {unread > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                                )}
+                            </button>
+
+                            {showNotifs && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setShowNotifs(false)} />
+                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-20 overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                                            <span className="text-sm font-semibold text-gray-800">Notifications</span>
+                                            {unread > 0 && (
+                                                <button onClick={markAllRead} className="text-xs text-indigo-600 font-medium hover:underline">
+                                                    Tout marquer lu
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                                            {notifs.length === 0 ? (
+                                                <p className="text-xs text-gray-400 text-center py-6">Aucune notification</p>
+                                            ) : notifs.map(n => (
+                                                <div key={n.id} className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${!n.lu ? 'bg-indigo-50/50' : ''}`}>
+                                                    {!n.lu && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0" />}
+                                                    <div className={`flex-1 min-w-0 ${n.lu ? 'pl-3.5' : ''}`}>
+                                                        <p className={`text-sm ${!n.lu ? 'font-semibold text-gray-800' : 'text-gray-600'}`}>{n.message}</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                                                            <Clock size={11} />
+                                                            {formatRelativeTime(n.created_at)}
+                                                        </p>
+                                                    </div>
+                                                    {!n.lu && (
+                                                        <button onClick={() => markRead(n.id)} className="text-gray-300 hover:text-indigo-500 transition-colors shrink-0">
+                                                            <Check size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="px-4 py-3 border-t border-gray-100 text-center">
+                                            <Link href="/admin/notifications" onClick={() => setShowNotifs(false)} className="text-xs text-indigo-600 font-medium hover:underline">
+                                                Voir toutes les notifications
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                         <div className="w-px h-5 bg-slate-200" />
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black uppercase tracking-wider text-emerald-500 shrink-0">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
